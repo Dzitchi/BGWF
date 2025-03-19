@@ -1,4 +1,4 @@
-package com.example.bgwf.ui.screens
+package com.example.bgwf.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*

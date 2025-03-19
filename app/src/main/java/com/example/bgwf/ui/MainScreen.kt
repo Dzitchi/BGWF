@@ -4,14 +4,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import com.example.bgwf.ui.screens.AccountScreen
-import com.example.bgwf.ui.screens.MyGamesScreen
-import com.example.bgwf.ui.screens.SearchScreen
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
+import com.example.bgwf.ui.screens.AccountScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -19,6 +17,7 @@ fun MainScreen() {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     var currentScreen by remember { mutableStateOf("Search") }
+    var isLoggedIn by remember { mutableStateOf(false) }
 
     ModalNavigationDrawer(
         drawerContent = {
@@ -33,10 +32,21 @@ fun MainScreen() {
                     currentScreen = "MyGames"
                     scope.launch { drawerState.close() }
                 })
-                NavigationDrawerItem(label = { Text("Аккаунт") }, selected = currentScreen == "Account", onClick = {
-                    currentScreen = "Account"
-                    scope.launch { drawerState.close() }
-                })
+                if (isLoggedIn) {
+                    NavigationDrawerItem(label = { Text("Аккаунт") }, selected = currentScreen == "Account", onClick = {
+                        currentScreen = "Account"
+                        scope.launch { drawerState.close() }
+                    })
+                } else {
+                    NavigationDrawerItem(label = { Text("Войти") }, selected = currentScreen == "Login", onClick = {
+                        currentScreen = "Login"
+                        scope.launch { drawerState.close() }
+                    })
+                    NavigationDrawerItem(label = { Text("Зарегистрироваться") }, selected = currentScreen == "Register", onClick = {
+                        currentScreen = "Register"
+                        scope.launch { drawerState.close() }
+                    })
+                }
             }
         },
         drawerState = drawerState
@@ -58,6 +68,11 @@ fun MainScreen() {
                     "Search" -> SearchScreen()
                     "MyGames" -> MyGamesScreen()
                     "Account" -> AccountScreen()
+                    "Login" -> LoginScreen(onLoginSuccess = { token ->
+                        isLoggedIn = true
+                        // Сохраните token в SharedPreferences или другом месте
+                    })
+                    "Register" -> RegisterScreen()
                 }
             }
         }
