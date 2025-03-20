@@ -11,27 +11,38 @@ import androidx.compose.ui.unit.dp
 import com.example.bgwf.ui.components.GameItem
 
 @Composable
-fun MyGamesScreen() {
+fun MyGamesScreen(accessToken: String) {
     var userGames by remember { mutableStateOf<List<Game>>(emptyList()) }
     var errorMessage by remember { mutableStateOf("") }
+    var userId by remember { mutableStateOf<Int?>(null) }
     val scope = rememberCoroutineScope()
 
-    Column(modifier = Modifier.padding(16.dp)) {
-        Text("Мои игры", style = MaterialTheme.typography.headlineSmall)
-        Button(onClick = {
+    LaunchedEffect(accessToken) {
+        if (accessToken.isNotEmpty()) {
             scope.launch {
                 try {
-                    userGames = RetrofitClient.apiService.getUserGames(1)
+                    // Сначала получаем информацию о текущем пользователе
+                    val userResponse = RetrofitClient.apiService.getUser("Bearer $accessToken")
+                    userId = userResponse.id
+
+                    // Теперь загружаем его игры
+                    userId?.let { id ->
+                        userGames = RetrofitClient.apiService.getUserGames(id)
+                    }
                 } catch (e: Exception) {
                     errorMessage = e.message ?: "Ошибка загрузки"
                 }
             }
-        }) {
-            Text("Загрузить игры")
         }
+    }
+
+    Column(modifier = Modifier.padding(16.dp)) {
+        Text("Мои игры", style = MaterialTheme.typography.headlineSmall)
+
         if (errorMessage.isNotEmpty()) {
             Text("Ошибка: $errorMessage", color = MaterialTheme.colorScheme.error)
         }
+
         userGames.forEach { game -> GameItem(game) }
     }
 }

@@ -9,15 +9,38 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
-import com.example.bgwf.ui.screens.AccountScreen
+import com.example.bgwf.api.RetrofitClient
+import com.example.bgwf.model.UserResponse
+import com.example.bgwf.utils.SharedPreferencesHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen() {
+fun MainScreen(sharedPreferencesHelper: SharedPreferencesHelper) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+
     var currentScreen by remember { mutableStateOf("Search") }
     var isLoggedIn by remember { mutableStateOf(false) }
+    var accessToken by remember { mutableStateOf(sharedPreferencesHelper.getToken() ?: "") }
+    var userInfo by remember { mutableStateOf<UserResponse?>(null) } // Данные о пользователе
+
+    // Загружаем данные пользователя при изменении токена
+    LaunchedEffect(accessToken) {
+        if (accessToken.isNotEmpty()) {
+            try {
+                val response = RetrofitClient.apiService.getUser("Bearer $accessToken")
+                userInfo = response
+                isLoggedIn = true
+            } catch (e: Exception) {
+                isLoggedIn = false
+                accessToken = ""
+                sharedPreferencesHelper.clearToken()
+            }
+        } else {
+            isLoggedIn = false
+            userInfo = null
+        }
+    }
 
     ModalNavigationDrawer(
         drawerContent = {
@@ -28,24 +51,15 @@ fun MainScreen() {
                     currentScreen = "Search"
                     scope.launch { drawerState.close() }
                 })
-                NavigationDrawerItem(label = { Text("Мои игры") }, selected = currentScreen == "MyGames", onClick = {
-                    currentScreen = "MyGames"
+                if (isLoggedIn) {
+                    NavigationDrawerItem(label = { Text("Мои игры") }, selected = currentScreen == "MyGames", onClick = {
+                        currentScreen = "MyGames"
+                        scope.launch { drawerState.close() }
+                    })
+                NavigationDrawerItem(label = { Text("Аккаунт") }, selected = currentScreen == "Account", onClick = {
+                    currentScreen = "Account"
                     scope.launch { drawerState.close() }
                 })
-                if (isLoggedIn) {
-                    NavigationDrawerItem(label = { Text("Аккаунт") }, selected = currentScreen == "Account", onClick = {
-                        currentScreen = "Account"
-                        scope.launch { drawerState.close() }
-                    })
-                } else {
-                    NavigationDrawerItem(label = { Text("Войти") }, selected = currentScreen == "Login", onClick = {
-                        currentScreen = "Login"
-                        scope.launch { drawerState.close() }
-                    })
-                    NavigationDrawerItem(label = { Text("Зарегистрироваться") }, selected = currentScreen == "Register", onClick = {
-                        currentScreen = "Register"
-                        scope.launch { drawerState.close() }
-                    })
                 }
             }
         },
@@ -66,13 +80,30 @@ fun MainScreen() {
             Box(modifier = Modifier.padding(paddingValues)) {
                 when (currentScreen) {
                     "Search" -> SearchScreen()
-                    "MyGames" -> MyGamesScreen()
-                    "Account" -> AccountScreen()
+                    "MyGames" -> MyGamesScreen(accessToken = accessToken)
+                    "Account" -> AccountScreen(
+                        userInfo = userInfo,
+                        isLoggedIn = isLoggedIn,
+                        onLoginRequest = { currentScreen = "Login" },
+                        onRegisterRequest = { currentScreen = "Register" },
+                        onLogout = {
+                            isLoggedIn = false
+                            accessToken = ""
+                            userInfo = null
+                            sharedPreferencesHelper.clearToken()
+                            currentScreen = "Account"
+                        }
+                    )
                     "Login" -> LoginScreen(onLoginSuccess = { token ->
-                        isLoggedIn = true
-                        // Сохраните token в SharedPreferences или другом месте
+                        accessToken = token
+                        sharedPreferencesHelper.saveToken(token)
+                        currentScreen = "Account"
                     })
-                    "Register" -> RegisterScreen()
+                    "Register" -> RegisterScreen(onRegisterSuccess = { token ->
+                        accessToken = token
+                        sharedPreferencesHelper.saveToken(token)
+                        currentScreen = "Account"
+                    })
                 }
             }
         }

@@ -4,7 +4,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import com.example.bgwf.api.RetrofitClient
+import com.example.bgwf.utils.SharedPreferencesHelper
 import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -12,10 +14,21 @@ import com.example.bgwf.model.LoginCredentials
 
 @Composable
 fun LoginScreen(onLoginSuccess: (String) -> Unit) {
+    val context = LocalContext.current
+    val prefs = remember { SharedPreferencesHelper(context) }
+
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
+
+    // Если токен уже сохранён, сразу логиним пользователя
+    LaunchedEffect(Unit) {
+        val savedToken = prefs.getToken()
+        if (!savedToken.isNullOrEmpty()) {
+            onLoginSuccess(savedToken)
+        }
+    }
 
     Column(modifier = Modifier.padding(16.dp)) {
         Text("Вход в аккаунт", style = MaterialTheme.typography.headlineSmall)
@@ -42,7 +55,10 @@ fun LoginScreen(onLoginSuccess: (String) -> Unit) {
                     val response = RetrofitClient.apiService.login(credentials)
                     if (response.isSuccessful) {
                         val loginResponse = response.body()
-                        onLoginSuccess(loginResponse?.access_token ?: "")
+                        val token = loginResponse?.access_token ?: ""
+
+                        prefs.saveToken(token) // Сохраняем токен
+                        onLoginSuccess(token) // Переходим дальше
                     } else {
                         errorMessage = "Ошибка входа"
                     }

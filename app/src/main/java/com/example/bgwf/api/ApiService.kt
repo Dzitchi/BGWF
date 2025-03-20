@@ -4,17 +4,16 @@ import com.example.bgwf.model.Game
 import com.example.bgwf.model.LoginCredentials
 import com.example.bgwf.model.User
 import com.example.bgwf.model.LoginResponse
+import com.example.bgwf.model.UserResponse
 import retrofit2.Response
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
 import retrofit2.http.Body
+import retrofit2.http.Header
 import retrofit2.http.POST
 
 interface ApiService {
-    @GET("/users/{id}")
-    suspend fun getUser(@Path("id") userId: Int): User
-
     @GET("/games/search")
     suspend fun searchGames(@Query("query") query: String): List<Game>
 
@@ -26,4 +25,7 @@ interface ApiService {
 
     @POST("/login")
     suspend fun login(@Body credentials: LoginCredentials): Response<LoginResponse>
+
+    @GET("/users/me") // Теперь получаем данные о текущем пользователе
+    suspend fun getUser(@Header("Authorization") token: String): UserResponse
 }
