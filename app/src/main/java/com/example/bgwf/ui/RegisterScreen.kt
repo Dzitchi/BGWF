@@ -22,7 +22,6 @@ fun RegisterScreen(onRegisterSuccess: (String) -> Unit) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf("") }
-    var successMessage by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
     Column(modifier = Modifier.padding(16.dp)) {
@@ -78,10 +77,6 @@ fun RegisterScreen(onRegisterSuccess: (String) -> Unit) {
 
         if (errorMessage.isNotEmpty()) {
             Text("Ошибка: $errorMessage", color = MaterialTheme.colorScheme.error)
-        }
-
-        if (successMessage.isNotEmpty()) {
-            Text("Успех: $successMessage", color = MaterialTheme.colorScheme.primary)
         }
     }
 }

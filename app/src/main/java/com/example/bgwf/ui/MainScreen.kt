@@ -46,7 +46,7 @@ fun MainScreen(sharedPreferencesHelper: SharedPreferencesHelper) {
         drawerContent = {
             ModalDrawerSheet {
                 Text("Меню", modifier = Modifier.padding(16.dp), style = MaterialTheme.typography.headlineSmall)
-                Divider()
+                HorizontalDivider()
                 NavigationDrawerItem(label = { Text("Поиск игр") }, selected = currentScreen == "Search", onClick = {
                     currentScreen = "Search"
                     scope.launch { drawerState.close() }

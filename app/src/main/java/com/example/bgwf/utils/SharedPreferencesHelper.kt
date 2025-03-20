@@ -2,13 +2,14 @@ package com.example.bgwf.utils
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit // Добавляем импорт KTX-расширения
 
 class SharedPreferencesHelper(context: Context) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
 
     fun saveToken(token: String) {
-        prefs.edit().putString("access_token", token).apply()
+        prefs.edit { putString("access_token", token) }
     }
 
     fun getToken(): String? {
@@ -16,6 +17,6 @@ class SharedPreferencesHelper(context: Context) {
     }
 
     fun clearToken() {
-        prefs.edit().remove("access_token").apply()
+        prefs.edit { remove("access_token") }
     }
 }
