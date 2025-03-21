@@ -4,6 +4,7 @@ import com.example.bgwf.model.Game
 import com.example.bgwf.model.LoginCredentials
 import com.example.bgwf.model.User
 import com.example.bgwf.model.LoginResponse
+import com.example.bgwf.model.Rate
 import com.example.bgwf.model.Rating
 import com.example.bgwf.model.UserResponse
 import retrofit2.Response
@@ -32,4 +33,11 @@ interface ApiService {
 
     @GET("/games/{game_id}/ratings")
     suspend fun getGameRatings(@Path("game_id") gameId: Int): List<Rating>
+
+    @POST("/games/{game_id}/rate")
+    suspend fun rateGame(
+        @Path("game_id") gameId: Int,
+        @Body rating: Rate,
+        @Header("Authorization") token: String
+    ): Response<Unit>
 }

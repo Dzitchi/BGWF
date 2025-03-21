@@ -81,7 +81,7 @@ fun MainScreen(sharedPreferencesHelper: SharedPreferencesHelper) {
         ) { paddingValues ->
             Box(modifier = Modifier.padding(paddingValues)) {
                 when {
-                    selectedGame != null -> GameDetailsScreen(game = selectedGame!!) { selectedGame = null }
+                    selectedGame != null -> GameDetailsScreen(accessToken, game = selectedGame!!) { selectedGame = null }
                     currentScreen == "Search" -> SearchScreen { game -> selectedGame = game }
                     currentScreen == "MyGames" -> MyGamesScreen(accessToken) { game -> selectedGame = game }
                     currentScreen == "Account" -> AccountScreen(
@@ -97,6 +97,13 @@ fun MainScreen(sharedPreferencesHelper: SharedPreferencesHelper) {
                             currentScreen = "Account"
                         }
                     )
+                    currentScreen == "Login" -> LoginScreen(onLoginSuccess = { token ->
+                        accessToken = token
+                        currentScreen = "Account"
+                    })
+                    currentScreen == "Register" -> RegisterScreen(onRegisterSuccess = {
+                        currentScreen = "Login"
+                    })
                 }
             }
         }

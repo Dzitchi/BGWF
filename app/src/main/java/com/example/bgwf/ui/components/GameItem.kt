@@ -73,7 +73,7 @@ fun GameItem(game: Game, onClick: () -> Unit) {
                         Icon(
                             painter = painterResource(R.drawable.ic_star), // Иконка звезды
                             contentDescription = "Рейтинг",
-                            tint = Color.Yellow,
+                            tint = Color(0xFFFFEA00),
                             modifier = Modifier.size(32.dp)
                         )
                         Text(

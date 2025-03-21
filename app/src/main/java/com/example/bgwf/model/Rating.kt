@@ -6,3 +6,8 @@ data class Rating(
     val rating: Int,
     val review: String?
 )
+
+data class Rate(
+    val rating: Int,
+    val review: String?
+)
