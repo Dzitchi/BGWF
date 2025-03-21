@@ -21,11 +21,9 @@ fun MyGamesScreen(accessToken: String) {
         if (accessToken.isNotEmpty()) {
             scope.launch {
                 try {
-                    // Сначала получаем информацию о текущем пользователе
                     val userResponse = RetrofitClient.apiService.getUser("Bearer $accessToken")
                     userId = userResponse.id
 
-                    // Теперь загружаем его игры
                     userId?.let { id ->
                         userGames = RetrofitClient.apiService.getUserGames(id)
                     }
@@ -41,8 +39,10 @@ fun MyGamesScreen(accessToken: String) {
 
         if (errorMessage.isNotEmpty()) {
             Text("Ошибка: $errorMessage", color = MaterialTheme.colorScheme.error)
+        } else if (userGames.isEmpty()) {
+            Text("У вас еще нет игр :(", style = MaterialTheme.typography.bodyLarge)
+        } else {
+            userGames.forEach { game -> GameItem(game) }
         }
-
-        userGames.forEach { game -> GameItem(game) }
     }
 }

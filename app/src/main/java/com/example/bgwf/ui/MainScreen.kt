@@ -56,11 +56,11 @@ fun MainScreen(sharedPreferencesHelper: SharedPreferencesHelper) {
                         currentScreen = "MyGames"
                         scope.launch { drawerState.close() }
                     })
+                }
                 NavigationDrawerItem(label = { Text("Аккаунт") }, selected = currentScreen == "Account", onClick = {
                     currentScreen = "Account"
                     scope.launch { drawerState.close() }
                 })
-                }
             }
         },
         drawerState = drawerState

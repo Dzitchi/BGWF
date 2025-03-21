@@ -2,7 +2,7 @@ package com.example.bgwf.utils
 
 import android.content.Context
 import android.content.SharedPreferences
-import androidx.core.content.edit // Добавляем импорт KTX-расширения
+import androidx.core.content.edit
 
 class SharedPreferencesHelper(context: Context) {
     private val prefs: SharedPreferences =
