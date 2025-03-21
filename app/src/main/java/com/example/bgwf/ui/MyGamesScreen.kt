@@ -11,7 +11,7 @@ import androidx.compose.ui.unit.dp
 import com.example.bgwf.ui.components.GameItem
 
 @Composable
-fun MyGamesScreen(accessToken: String) {
+fun MyGamesScreen(accessToken: String, onGameClick: (Game) -> Unit) {
     var userGames by remember { mutableStateOf<List<Game>>(emptyList()) }
     var errorMessage by remember { mutableStateOf("") }
     var userId by remember { mutableStateOf<Int?>(null) }
@@ -42,7 +42,9 @@ fun MyGamesScreen(accessToken: String) {
         } else if (userGames.isEmpty()) {
             Text("У вас еще нет игр :(", style = MaterialTheme.typography.bodyLarge)
         } else {
-            userGames.forEach { game -> GameItem(game) }
+            userGames.forEach { game ->
+                GameItem(game = game, onClick = { onGameClick(game) })
+            }
         }
     }
 }

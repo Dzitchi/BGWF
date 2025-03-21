@@ -1,5 +1,6 @@
 package com.example.bgwf.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,8 +19,8 @@ import kotlinx.coroutines.launch
 
 
 @Composable
-fun GameItem(game: Game) {
-    var averageRating by remember { mutableStateOf<String>("-") }
+fun GameItem(game: Game, onClick: () -> Unit) {
+    var averageRating by remember { mutableStateOf("-") }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(game.id) {
@@ -42,6 +43,8 @@ fun GameItem(game: Game) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
+            .clickable { onClick() },
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
             modifier = Modifier.padding(8.dp),

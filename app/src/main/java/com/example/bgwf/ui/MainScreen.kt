@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Menu
 import com.example.bgwf.api.RetrofitClient
 import com.example.bgwf.model.UserResponse
 import com.example.bgwf.utils.SharedPreferencesHelper
+import com.example.bgwf.model.Game
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -20,6 +21,7 @@ fun MainScreen(sharedPreferencesHelper: SharedPreferencesHelper) {
     val scope = rememberCoroutineScope()
 
     var currentScreen by remember { mutableStateOf("Search") }
+    var selectedGame by remember { mutableStateOf<Game?>(null) }
     var isLoggedIn by remember { mutableStateOf(false) }
     var accessToken by remember { mutableStateOf(sharedPreferencesHelper.getToken() ?: "") }
     var userInfo by remember { mutableStateOf<UserResponse?>(null) } // Данные о пользователе
@@ -78,10 +80,11 @@ fun MainScreen(sharedPreferencesHelper: SharedPreferencesHelper) {
             }
         ) { paddingValues ->
             Box(modifier = Modifier.padding(paddingValues)) {
-                when (currentScreen) {
-                    "Search" -> SearchScreen()
-                    "MyGames" -> MyGamesScreen(accessToken = accessToken)
-                    "Account" -> AccountScreen(
+                when {
+                    selectedGame != null -> GameDetailsScreen(game = selectedGame!!) { selectedGame = null }
+                    currentScreen == "Search" -> SearchScreen { game -> selectedGame = game }
+                    currentScreen == "MyGames" -> MyGamesScreen(accessToken) { game -> selectedGame = game }
+                    currentScreen == "Account" -> AccountScreen(
                         userInfo = userInfo,
                         isLoggedIn = isLoggedIn,
                         onLoginRequest = { currentScreen = "Login" },
@@ -94,16 +97,6 @@ fun MainScreen(sharedPreferencesHelper: SharedPreferencesHelper) {
                             currentScreen = "Account"
                         }
                     )
-                    "Login" -> LoginScreen(onLoginSuccess = { token ->
-                        accessToken = token
-                        sharedPreferencesHelper.saveToken(token)
-                        currentScreen = "Account"
-                    })
-                    "Register" -> RegisterScreen(onRegisterSuccess = { token ->
-                        accessToken = token
-                        sharedPreferencesHelper.saveToken(token)
-                        currentScreen = "Account"
-                    })
                 }
             }
         }

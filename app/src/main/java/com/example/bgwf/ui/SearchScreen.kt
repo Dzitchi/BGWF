@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun SearchScreen() {
+fun SearchScreen(onGameClick: (Game) -> Unit) {
     var searchQuery by remember { mutableStateOf("") }
     var searchResults by remember { mutableStateOf<List<Game>>(emptyList()) }
     var allGames by remember { mutableStateOf<List<Game>>(emptyList()) }
@@ -53,7 +53,7 @@ fun SearchScreen() {
 
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(if (searchQuery.isEmpty()) allGames else searchResults) { game ->
-                GameItem(game)
+                GameItem(game = game, onClick = { onGameClick(game) })
             }
         }
     }
