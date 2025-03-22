@@ -254,3 +254,40 @@ def rate_game(game_id: int, rating: int = Body(...), review: str = Body(""), aut
 
     db.commit()
     return {"message": "Rating added/updated successfully"}
+
+
+@app.post("/users/games/{game_id}")
+def add_game_to_user(game_id: int, authorization: str = Header(...), db: Session = Depends(get_db)):
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid authorization header")
+
+    token = authorization.split(" ")[1]
+    payload = verify_token(token)
+    user_id = payload.get("user_id")
+
+    existing_entry = db.query(UserGame).filter(UserGame.user_id == user_id, UserGame.game_id == game_id).first()
+    if existing_entry:
+        raise HTTPException(status_code=400, detail="Game already added")
+
+    user_game = UserGame(user_id=user_id, game_id=game_id)
+    db.add(user_game)
+    db.commit()
+    return {"message": "Game added successfully"}
+
+
+@app.delete("/users/games/{game_id}")
+def remove_game_from_user(game_id: int, authorization: str = Header(...), db: Session = Depends(get_db)):
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid authorization header")
+
+    token = authorization.split(" ")[1]
+    payload = verify_token(token)
+    user_id = payload.get("user_id")
+
+    user_game = db.query(UserGame).filter(UserGame.user_id == user_id, UserGame.game_id == game_id).first()
+    if not user_game:
+        raise HTTPException(status_code=404, detail="Game not found in user's collection")
+
+    db.delete(user_game)
+    db.commit()
+    return {"message": "Game removed successfully"}
