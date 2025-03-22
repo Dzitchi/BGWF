@@ -12,6 +12,7 @@ import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.Header
 import retrofit2.http.POST
 
@@ -38,6 +39,18 @@ interface ApiService {
     suspend fun rateGame(
         @Path("game_id") gameId: Int,
         @Body rating: Rate,
+        @Header("Authorization") token: String
+    ): Response<Unit>
+
+    @POST("/users/games/{game_id}")
+    suspend fun addGameToUser(
+        @Path("game_id") gameId: Int,
+        @Header("Authorization") token: String
+    ): Response<Unit>
+
+    @DELETE("/users/games/{game_id}")
+    suspend fun removeGameFromUser(
+        @Path("game_id") gameId: Int,
         @Header("Authorization") token: String
     ): Response<Unit>
 }

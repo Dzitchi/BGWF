@@ -12,13 +12,13 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.Alignment
 import com.example.bgwf.R
 import com.example.bgwf.api.RetrofitClient
 import com.example.bgwf.model.Game
 import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.Color
 import com.example.bgwf.model.Rate
-import com.google.accompanist.flowlayout.FlowRow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,6 +29,7 @@ fun GameDetailsScreen(accessToken: String, game: Game, onBack: () -> Unit) {
     var showRatingDialog by remember { mutableStateOf(false) }
     var rating by remember { mutableStateOf(0) }
     var review by remember { mutableStateOf("") }
+    var isGameOwned by remember { mutableStateOf(false) }
 
     LaunchedEffect(game.id) {
         scope.launch {
@@ -37,6 +38,18 @@ fun GameDetailsScreen(accessToken: String, game: Game, onBack: () -> Unit) {
                 averageRating = if (ratings.isNotEmpty()) ratings.map { it.rating }.average() else 0.0
             } catch (e: Exception) {
                 averageRating = 0.0
+            }
+        }
+    }
+
+    LaunchedEffect(accessToken) {
+        scope.launch {
+            try {
+                val user = RetrofitClient.apiService.getUser("Bearer $accessToken")
+                val userGames = RetrofitClient.apiService.getUserGames(user.id)
+                isGameOwned = userGames.any { it.id == game.id }
+            } catch (e: Exception) {
+                Log.e("API_ERROR", "Ошибка получения данных пользователя", e)
             }
         }
     }
@@ -77,10 +90,8 @@ fun GameDetailsScreen(accessToken: String, game: Game, onBack: () -> Unit) {
             Spacer(modifier = Modifier.height(16.dp))
 
             // Оценка игры
-            FlowRow(
-                mainAxisSpacing = 8.dp, // Расстояние между элементами по горизонтали
-                crossAxisSpacing = 8.dp, // Расстояние между элементами по вертикали
-                modifier = Modifier.padding(bottom = 5.dp)
+            Row(
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text("Оценка: ", style = MaterialTheme.typography.bodyLarge)
                 repeat(5) { index ->
@@ -94,11 +105,45 @@ fun GameDetailsScreen(accessToken: String, game: Game, onBack: () -> Unit) {
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("%.1f".format(averageRating), style = MaterialTheme.typography.bodyLarge)
-                if (accessToken.isNotEmpty()) {
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Button(onClick = { showRatingDialog = true }) {
-                        Text("Оценить")
+            }
+
+            if (accessToken.isNotEmpty()) {
+                Spacer(modifier = Modifier.width(10.dp))
+                Button(onClick = { showRatingDialog = true }) {
+                    Text("Оценить")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+            if (isGameOwned) {
+                Button(onClick = {
+                    scope.launch {
+                        try {
+                            RetrofitClient.apiService.removeGameFromUser(game.id, "Bearer $accessToken")
+                            isGameOwned = false
+                        } catch (e: Exception) {
+                            Log.e("API_ERROR", "Ошибка при удалении игры", e)
+                        }
                     }
+                },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB22222))
+                    ) {
+                    Text("Удалить игру")
+                }
+            } else {
+                Button(onClick = {
+                    scope.launch {
+                        try {
+                            RetrofitClient.apiService.addGameToUser(game.id, "Bearer $accessToken")
+                            isGameOwned = true
+                        } catch (e: Exception) {
+                            Log.e("API_ERROR", "Ошибка при добавлении игры", e)
+                        }
+                    }
+                },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF32CD32))
+                ) {
+                    Text("Добавить игру")
                 }
             }
 
