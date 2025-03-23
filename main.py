@@ -3,8 +3,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Text, DateTime, func
-from sqlalchemy.orm import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from rapidfuzz import fuzz
 from transliterate import translit
 from passlib.context import CryptContext
@@ -28,6 +27,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # Определяем модели
 class User(Base):
+    """Модель пользователя."""
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, nullable=False)
@@ -45,6 +45,7 @@ class User(Base):
 
 
 class Game(Base):
+    """Модель игры."""
     __tablename__ = "games"
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, unique=True, nullable=False)
@@ -58,12 +59,14 @@ class Game(Base):
 
 
 class UserGame(Base):
+    """Связь пользователей и игр."""
     __tablename__ = "user_games"
     user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
     game_id = Column(Integer, ForeignKey("games.id"), primary_key=True)
 
 
 class Rating(Base):
+    """Модель рейтинга и отзывов."""
     __tablename__ = "ratings"
     user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
     game_id = Column(Integer, ForeignKey("games.id"), primary_key=True)
@@ -81,6 +84,7 @@ IMAGE_FOLDER = "images"
 
 
 def get_db():
+    """Создает сессию базы данных."""
     db = SessionLocal()
     try:
         yield db
@@ -89,7 +93,7 @@ def get_db():
 
 
 def safe_translit(text):
-    """Пытаемся транслитерировать текст, если возможно"""
+    """Транслитерирует текст, если возможно."""
     if len(text) <= 1:  # Проверяем, чтобы запрос был не слишком коротким
         return text
     try:
@@ -120,17 +124,9 @@ def verify_token(token: str):
         raise HTTPException(status_code=401, detail="Invalid token")
 
 
-# Эндпоинты
-# @app.get("/users/{user_id}")
-# def get_user(user_id: int, db: Session = Depends(get_db)):
-#     user = db.query(User).filter(User.id == user_id).first()
-#     if not user:
-#         raise HTTPException(status_code=404, detail="User not found")
-#     return user
-
-
 @app.get("/games/search")
 def search_games(query: str = "", db: Session = Depends(get_db)):
+    """Поиск игр по названию с учетом транслитерации."""
     games = db.query(Game).all()
 
     if not query:
@@ -179,6 +175,7 @@ app.mount("/static", StaticFiles(directory=IMAGE_FOLDER), name="static")
 @app.post("/register")
 def register(username: str = Body(...), email: str = Body(...), password: str = Body(...),
              db: Session = Depends(get_db)):
+    """Регистрация нового пользователя."""
     if db.query(User).filter(User.username == username).first():
         raise HTTPException(status_code=400, detail="Username already exists")
 
@@ -193,6 +190,7 @@ def register(username: str = Body(...), email: str = Body(...), password: str = 
 
 @app.post("/login")
 def login(username: str = Body(...), password: str = Body(...), db: Session = Depends(get_db)):
+    """Аутентификация пользователя."""
     user = db.query(User).filter(User.username == username).first()
     if not user or not user.verify_password(password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -204,6 +202,13 @@ def login(username: str = Body(...), password: str = Body(...), db: Session = De
 
 @app.get("/users/me")
 def get_current_user(authorization: str = Header(...), db: Session = Depends(get_db)):
+    """
+    Получить информацию о текущем пользователе.
+
+    Требует заголовок Authorization с JWT-токеном в формате "Bearer <token>".
+
+    Возвращает ID, имя пользователя и email.
+    """
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid authorization header")
 
@@ -221,6 +226,7 @@ def get_current_user(authorization: str = Header(...), db: Session = Depends(get
 
 @app.get("/games/{game_id}/ratings")
 def get_game_ratings(game_id: int, db: Session = Depends(get_db)):
+    """Получить список оценок игры."""
     ratings = db.query(Rating).filter(Rating.game_id == game_id).all()
 
     if not ratings:
@@ -232,7 +238,12 @@ def get_game_ratings(game_id: int, db: Session = Depends(get_db)):
 @app.post("/games/{game_id}/rate")
 def rate_game(game_id: int, rating: int = Body(...), review: str = Body(""), authorization: str = Header(...),
               db: Session = Depends(get_db)):
-    """Добавить или обновить оценку игры"""
+    """
+    Добавить или обновить оценку игры.
+
+    Требует авторизацию через JWT. Оценка должна быть от 1 до 5.
+    Если пользователь уже оценивал игру, его оценка обновится.
+    """
     if not (1 <= rating <= 5):
         raise HTTPException(status_code=400, detail="Rating must be between 1 and 5")
 
@@ -258,6 +269,11 @@ def rate_game(game_id: int, rating: int = Body(...), review: str = Body(""), aut
 
 @app.post("/users/games/{game_id}")
 def add_game_to_user(game_id: int, authorization: str = Header(...), db: Session = Depends(get_db)):
+    """
+    Добавить игру в коллекцию пользователя.
+
+    Требует авторизацию через JWT. Если игра уже добавлена, вернет ошибку.
+    """
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid authorization header")
 
@@ -277,6 +293,11 @@ def add_game_to_user(game_id: int, authorization: str = Header(...), db: Session
 
 @app.delete("/users/games/{game_id}")
 def remove_game_from_user(game_id: int, authorization: str = Header(...), db: Session = Depends(get_db)):
+    """
+    Удалить игру из коллекции пользователя.
+
+    Требует авторизацию через JWT. Если игры нет в коллекции, вернет ошибку.
+    """
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid authorization header")
 
@@ -291,3 +312,22 @@ def remove_game_from_user(game_id: int, authorization: str = Header(...), db: Se
     db.delete(user_game)
     db.commit()
     return {"message": "Game removed successfully"}
+
+
+@app.get("/games/{game_id}/comments")
+def get_game_comments(game_id: int, db: Session = Depends(get_db)):
+    """Получить комментарии пользователей к игре."""
+    comments = (
+        db.query(Rating, User.username)
+        .join(User, Rating.user_id == User.id)
+        .filter(Rating.game_id == game_id)
+        .all()
+    )
+
+    if not comments:
+        return []
+
+    return [
+        {"user_id": rating.user_id, "username": username, "rating": rating.rating, "review": rating.review}
+        for rating, username in comments
+    ]
