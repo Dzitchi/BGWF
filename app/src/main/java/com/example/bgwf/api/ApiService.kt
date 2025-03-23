@@ -1,20 +1,8 @@
 package com.example.bgwf.api
 
-import com.example.bgwf.model.Game
-import com.example.bgwf.model.LoginCredentials
-import com.example.bgwf.model.User
-import com.example.bgwf.model.LoginResponse
-import com.example.bgwf.model.Rate
-import com.example.bgwf.model.Rating
-import com.example.bgwf.model.UserResponse
+import com.example.bgwf.model.*
 import retrofit2.Response
-import retrofit2.http.GET
-import retrofit2.http.Path
-import retrofit2.http.Query
-import retrofit2.http.Body
-import retrofit2.http.DELETE
-import retrofit2.http.Header
-import retrofit2.http.POST
+import retrofit2.http.*
 
 interface ApiService {
     @GET("/games/search")
@@ -53,4 +41,7 @@ interface ApiService {
         @Path("game_id") gameId: Int,
         @Header("Authorization") token: String
     ): Response<Unit>
+
+    @GET("/games/{game_id}/comments")
+    suspend fun getGameComments(@Path("game_id") gameId: Int): List<Comment>
 }

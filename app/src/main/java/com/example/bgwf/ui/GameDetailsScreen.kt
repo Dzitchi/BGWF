@@ -15,10 +15,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Alignment
 import com.example.bgwf.R
 import com.example.bgwf.api.RetrofitClient
-import com.example.bgwf.model.Game
+import com.example.bgwf.model.*
 import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.Color
-import com.example.bgwf.model.Rate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,6 +29,8 @@ fun GameDetailsScreen(accessToken: String, game: Game, onBack: () -> Unit) {
     var rating by remember { mutableStateOf(0) }
     var review by remember { mutableStateOf("") }
     var isGameOwned by remember { mutableStateOf(false) }
+
+    var comments by remember { mutableStateOf<List<Comment>>(emptyList()) }
 
     LaunchedEffect(game.id) {
         scope.launch {
@@ -50,6 +51,16 @@ fun GameDetailsScreen(accessToken: String, game: Game, onBack: () -> Unit) {
                 isGameOwned = userGames.any { it.id == game.id }
             } catch (e: Exception) {
                 Log.e("API_ERROR", "Ошибка получения данных пользователя", e)
+            }
+        }
+    }
+
+    LaunchedEffect(game.id) {
+        scope.launch {
+            try {
+                comments = RetrofitClient.apiService.getGameComments(game.id)
+            } catch (e: Exception) {
+                comments = emptyList()
             }
         }
     }
@@ -152,6 +163,55 @@ fun GameDetailsScreen(accessToken: String, game: Game, onBack: () -> Unit) {
             Text("Время игры: ${game.play_time} мин", style = MaterialTheme.typography.bodyLarge)
             Spacer(modifier = Modifier.height(8.dp))
             Text(game.description, style = MaterialTheme.typography.bodyMedium)
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (comments.isEmpty()) {
+                Text("Еще никто не оценил игру", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 16.dp))
+            } else {
+                Column(modifier = Modifier.padding(top = 16.dp)) {
+                    Text("Комментарии:", style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    comments.forEachIndexed { index, comment ->
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp)
+                        ) {
+                            Text(comment.username, style = MaterialTheme.typography.bodyLarge)
+
+                            // Отображение звезд
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                repeat(5) { starIndex ->
+                                    val starColor = if (starIndex < comment.rating) Color(0xFFFFEA00) else Color.Gray
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_star),
+                                        contentDescription = "Звезда",
+                                        tint = starColor,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("${comment.rating}", style = MaterialTheme.typography.bodyLarge)
+                            }
+
+                            comment.review?.let {
+                                Text(it, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 4.dp))
+                            }
+                        }
+
+                        // Добавляем Divider, кроме последнего элемента
+                        if (index < comments.lastIndex) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 8.dp),
+                                thickness = 1.dp,
+                                color = Color.Gray.copy(alpha = 0.5f)
+                            )
+                        }
+                    }
+                }
+            }
 
             // Диалог для оценки игры
             if (showRatingDialog) {
