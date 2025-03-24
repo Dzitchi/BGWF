@@ -2,8 +2,8 @@ from fastapi import FastAPI, HTTPException, Depends, Body, Header, APIRouter # �
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Text, DateTime, func
-from sqlalchemy.orm import declarative_base, sessionmaker, Session
+from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, Text, DateTime, func, Enum
+from sqlalchemy.orm import declarative_base, sessionmaker, Session, relationship
 from rapidfuzz import fuzz
 from transliterate import translit
 from passlib.context import CryptContext
@@ -73,6 +73,19 @@ class Rating(Base):
     rating = Column(Integer, nullable=False)
     review = Column(Text, nullable=True)
     rated_at = Column(DateTime, default=func.now())
+
+
+class FriendRequest(Base):
+    """Модель заявок в друзья"""
+    __tablename__ = "friends"
+
+    id = Column(Integer, primary_key=True, index=True)
+    sender_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    receiver_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    status = Column(Enum("pending", "accepted", "rejected", name="friend_status"), default="pending")
+
+    sender = relationship("User", foreign_keys=[sender_id])
+    receiver = relationship("User", foreign_keys=[receiver_id])
 
 
 Base.metadata.create_all(bind=engine)
@@ -152,6 +165,11 @@ def search_games(query: str = "", db: Session = Depends(get_db)):
 
 @app.get("/users/{user_id}/games")
 def get_user_games(user_id: int, db: Session = Depends(get_db)):
+    """
+    Получить список игр, принадлежащих пользователю.
+
+    Принимает ID пользователя и возвращает список игр, добавленных им в коллекцию.
+    """
     games = db.query(Game).join(UserGame).filter(UserGame.user_id == user_id).all()
     return games
 
@@ -159,6 +177,7 @@ def get_user_games(user_id: int, db: Session = Depends(get_db)):
 # Обработчик для получения изображений по имени файла
 @app.get("/images/{image_name}")
 async def get_image(image_name: str):
+    """Получить изображение по имени файла."""
     image_path = os.path.join(IMAGE_FOLDER, image_name)
 
     # Проверяем, существует ли файл
@@ -330,4 +349,134 @@ def get_game_comments(game_id: int, db: Session = Depends(get_db)):
     return [
         {"user_id": rating.user_id, "username": username, "rating": rating.rating, "review": rating.review}
         for rating, username in comments
+    ]
+
+
+@app.post("/friends/request/{receiver_id}")
+def send_friend_request(receiver_id: int, authorization: str = Header(...), db: Session = Depends(get_db)):
+    """Отправить запрос в друзья"""
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid authorization header")
+
+    token = authorization.split(" ")[1]
+    payload = verify_token(token)
+    sender_id = payload.get("user_id")
+
+    if sender_id == receiver_id:
+        raise HTTPException(status_code=400, detail="Нельзя добавить себя в друзья")
+
+    counter_request = db.query(FriendRequest).filter(
+        FriendRequest.sender_id == receiver_id,
+        FriendRequest.receiver_id == sender_id,
+        FriendRequest.status == "pending"
+    ).first()
+
+    if counter_request:
+        # Если есть встречный запрос, сразу принимаем дружбу
+        counter_request.status = "accepted"
+        db.commit()
+        return {"message": "Friend request auto-accepted"}
+
+    existing_request = db.query(FriendRequest).filter(
+        FriendRequest.sender_id == sender_id,
+        FriendRequest.receiver_id == receiver_id
+    ).first()
+
+    if existing_request:
+        if existing_request.status == "pending":
+            raise HTTPException(status_code=400, detail="Friend request already sent")
+        elif existing_request.status == "accepted":
+            raise HTTPException(status_code=400, detail="You are already friends")
+        elif existing_request.status == "rejected":
+            # Разрешаем повторную отправку, если заявка была отклонена
+            existing_request.status = "pending"
+            db.commit()
+            return {"message": "Friend request re-sent"}
+
+    friend_request = FriendRequest(sender_id=sender_id, receiver_id=receiver_id)
+    db.add(friend_request)
+    db.commit()
+    return {"message": "Заявка отправлена"}
+
+
+@app.post("/friends/respond/{request_id}")
+def respond_to_friend_request(request_id: int, response: str, authorization: str = Header(...),
+                              db: Session = Depends(get_db)):
+    """Подтвердить или отклонить заявку"""
+    if response not in ["accepted", "rejected"]:
+        raise HTTPException(status_code=400, detail="Некорректный ответ")
+
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid authorization header")
+
+    token = authorization.split(" ")[1]
+    payload = verify_token(token)
+    user_id = payload.get("user_id")
+
+    friend_request = db.query(FriendRequest).filter(FriendRequest.id == request_id).first()
+
+    if not friend_request or friend_request.receiver_id != user_id:
+        raise HTTPException(status_code=404, detail="Заявка не найдена")
+
+    friend_request.status = response
+    db.commit()
+    return {"message": f"Заявка {response}"}
+
+
+@app.get("/friends")
+def get_friends(authorization: str = Header(...), db: Session = Depends(get_db)):
+    """Получить список друзей"""
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid authorization header")
+
+    token = authorization.split(" ")[1]
+    payload = verify_token(token)
+    user_id = payload.get("user_id")
+
+    friends = (
+        db.query(
+            FriendRequest.sender_id,
+            FriendRequest.receiver_id,
+            User.username,
+            User.id
+        )
+        .join(User, (User.id == FriendRequest.sender_id) | (User.id == FriendRequest.receiver_id))
+        .filter(
+            (FriendRequest.sender_id == user_id) | (FriendRequest.receiver_id == user_id),
+            FriendRequest.status == "accepted"
+        )
+        .all()
+    )
+
+    friend_details = []
+    for fr in friends:
+        if fr.id != user_id:
+            friend_details.append({"id": fr.id, "username": fr.username})
+
+    return friend_details
+
+
+@app.get("/friends/requests")
+def get_incoming_friend_requests(authorization: str = Header(...), db: Session = Depends(get_db)):
+    """Получить список входящих заявок в друзья."""
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid authorization header")
+
+    token = authorization.split(" ")[1]
+    payload = verify_token(token)
+    user_id = payload.get("user_id")
+
+    requests = (
+        db.query(FriendRequest, User.username)
+        .join(User, User.id == FriendRequest.sender_id)
+        .filter(
+            FriendRequest.receiver_id == user_id,
+            FriendRequest.status == "pending"
+        )
+        .all()
+    )
+
+    return [
+        {"id": request.FriendRequest.id, "sender_id": request.FriendRequest.sender_id, "sender_name": request.username}
+        for request in requests
     ]
