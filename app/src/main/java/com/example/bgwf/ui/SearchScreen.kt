@@ -6,11 +6,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import com.example.bgwf.ui.components.GameItem
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
+
 import com.example.bgwf.api.RetrofitClient
 import com.example.bgwf.model.Game
-import com.example.bgwf.ui.components.GameItem
-import kotlinx.coroutines.launch
-import androidx.compose.ui.unit.dp
 
 @Composable
 fun SearchScreen(onGameClick: (Game) -> Unit) {

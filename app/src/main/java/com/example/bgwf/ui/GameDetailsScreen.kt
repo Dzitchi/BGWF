@@ -8,16 +8,17 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import kotlinx.coroutines.launch
+import coil.compose.AsyncImage
+
 import com.example.bgwf.R
 import com.example.bgwf.api.RetrofitClient
 import com.example.bgwf.model.*
-import kotlinx.coroutines.launch
-import androidx.compose.ui.graphics.Color
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

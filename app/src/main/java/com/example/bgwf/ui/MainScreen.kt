@@ -1,18 +1,18 @@
 package com.example.bgwf.ui
 
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import kotlinx.coroutines.launch
-import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
+import kotlinx.coroutines.launch
+
 import com.example.bgwf.api.RetrofitClient
 import com.example.bgwf.model.UserResponse
-import com.example.bgwf.utils.SharedPreferencesHelper
 import com.example.bgwf.model.Game
+import com.example.bgwf.utils.SharedPreferencesHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,6 +56,10 @@ fun MainScreen(sharedPreferencesHelper: SharedPreferencesHelper) {
                 if (isLoggedIn) {
                     NavigationDrawerItem(label = { Text("Мои игры") }, selected = currentScreen == "MyGames", onClick = {
                         currentScreen = "MyGames"
+                        scope.launch { drawerState.close() }
+                    })
+                    NavigationDrawerItem(label = { Text("Мои друзья") }, selected = currentScreen == "MyFriends", onClick = {
+                        currentScreen = "MyFriends"
                         scope.launch { drawerState.close() }
                     })
                 }
@@ -104,6 +108,7 @@ fun MainScreen(sharedPreferencesHelper: SharedPreferencesHelper) {
                     currentScreen == "Register" -> RegisterScreen(onRegisterSuccess = {
                         currentScreen = "Login"
                     })
+                    currentScreen == "MyFriends" -> FriendsScreen(accessToken)
                 }
             }
         }

@@ -1,8 +1,9 @@
 package com.example.bgwf.api
 
-import com.example.bgwf.model.*
 import retrofit2.Response
 import retrofit2.http.*
+
+import com.example.bgwf.model.*
 
 interface ApiService {
     @GET("/games/search")
@@ -44,4 +45,23 @@ interface ApiService {
 
     @GET("/games/{game_id}/comments")
     suspend fun getGameComments(@Path("game_id") gameId: Int): List<Comment>
+
+    @POST("/friends/request/{receiver_id}")
+    suspend fun sendFriendRequest(
+        @Path("receiver_id") receiverId: Int,
+        @Header("Authorization") token: String
+    ): Response<Unit>
+
+    @POST("/friends/respond/{request_id}")
+    suspend fun respondToFriendRequest(
+        @Path("request_id") requestId: Int,
+        @Query("response") response: String,
+        @Header("Authorization") token: String
+    ): Response<Unit>
+
+    @GET("/friends")
+    suspend fun getFriends(@Header("Authorization") token: String): Response<List<FriendResponse>>
+
+    @GET("/friends/requests")
+    suspend fun getFriendRequests(@Header("Authorization") token: String): Response<List<FriendRequestResponse>>
 }

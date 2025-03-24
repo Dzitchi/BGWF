@@ -4,11 +4,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
+
+import com.example.bgwf.ui.components.GameItem
 import com.example.bgwf.api.RetrofitClient
 import com.example.bgwf.model.Game
-import kotlinx.coroutines.launch
-import androidx.compose.ui.unit.dp
-import com.example.bgwf.ui.components.GameItem
 
 @Composable
 fun MyGamesScreen(accessToken: String, onGameClick: (Game) -> Unit) {
