@@ -51,20 +51,24 @@ fun MainScreen(sharedPreferencesHelper: SharedPreferencesHelper) {
                 HorizontalDivider()
                 NavigationDrawerItem(label = { Text("Поиск игр") }, selected = currentScreen == "Search", onClick = {
                     currentScreen = "Search"
+                    selectedGame = null
                     scope.launch { drawerState.close() }
                 })
                 if (isLoggedIn) {
                     NavigationDrawerItem(label = { Text("Мои игры") }, selected = currentScreen == "MyGames", onClick = {
                         currentScreen = "MyGames"
+                        selectedGame = null
                         scope.launch { drawerState.close() }
                     })
                     NavigationDrawerItem(label = { Text("Мои друзья") }, selected = currentScreen == "MyFriends", onClick = {
                         currentScreen = "MyFriends"
+                        selectedGame = null
                         scope.launch { drawerState.close() }
                     })
                 }
                 NavigationDrawerItem(label = { Text("Аккаунт") }, selected = currentScreen == "Account", onClick = {
                     currentScreen = "Account"
+                    selectedGame = null
                     scope.launch { drawerState.close() }
                 })
             }

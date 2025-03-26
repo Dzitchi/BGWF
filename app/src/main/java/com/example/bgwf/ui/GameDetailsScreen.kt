@@ -124,40 +124,48 @@ fun GameDetailsScreen(accessToken: String, game: Game, onBack: () -> Unit) {
                 Button(onClick = { showRatingDialog = true }) {
                     Text("Оценить")
                 }
-            }
 
-            Spacer(modifier = Modifier.height(10.dp))
-            if (isGameOwned) {
-                Button(onClick = {
-                    scope.launch {
-                        try {
-                            RetrofitClient.apiService.removeGameFromUser(game.id, "Bearer $accessToken")
-                            isGameOwned = false
-                        } catch (e: Exception) {
-                            Log.e("API_ERROR", "Ошибка при удалении игры", e)
+                Spacer(modifier = Modifier.height(10.dp))
+                if (isGameOwned) {
+                    Button(onClick = {
+                        scope.launch {
+                            try {
+                                RetrofitClient.apiService.removeGameFromUser(game.id, "Bearer $accessToken")
+                                isGameOwned = false
+                            } catch (e: Exception) {
+                                Log.e("API_ERROR", "Ошибка при удалении игры", e)
+                            }
                         }
-                    }
-                },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB22222))
+                    },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB22222))
                     ) {
-                    Text("Удалить игру")
+                        Text("Удалить игру")
+                    }
+                } else {
+                    Button(onClick = {
+                        scope.launch {
+                            try {
+                                RetrofitClient.apiService.addGameToUser(game.id, "Bearer $accessToken")
+                                isGameOwned = true
+                            } catch (e: Exception) {
+                                Log.e("API_ERROR", "Ошибка при добавлении игры", e)
+                            }
+                        }
+                    },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF32CD32))
+                    ) {
+                        Text("Добавить игру")
+                    }
                 }
             } else {
-                Button(onClick = {
-                    scope.launch {
-                        try {
-                            RetrofitClient.apiService.addGameToUser(game.id, "Bearer $accessToken")
-                            isGameOwned = true
-                        } catch (e: Exception) {
-                            Log.e("API_ERROR", "Ошибка при добавлении игры", e)
-                        }
-                    }
-                },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF32CD32))
-                ) {
-                    Text("Добавить игру")
-                }
+                Text(
+                    "Зайдите в аккаунт, чтобы оценить и добавить игру в коллекцию",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(top = 10.dp),
+                    color = Color.Gray
+                )
             }
+            Spacer(modifier = Modifier.width(10.dp))
 
             Text("Жанр: ${game.genre}", style = MaterialTheme.typography.bodyLarge)
             Text("Игроки: ${game.min_players} - ${game.max_players}", style = MaterialTheme.typography.bodyLarge)
