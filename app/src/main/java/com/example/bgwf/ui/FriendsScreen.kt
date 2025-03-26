@@ -15,11 +15,13 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.PersonAdd
 import kotlinx.coroutines.launch
 
 import com.example.bgwf.api.RetrofitClient
 import com.example.bgwf.model.FriendResponse
 import com.example.bgwf.model.FriendRequestResponse
+import com.example.bgwf.model.UserResponse
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,7 +31,8 @@ fun FriendsScreen(accessToken: String) {
     var friendRequests by remember { mutableStateOf<List<FriendRequestResponse>>(emptyList()) }
     var showRequestsDialog by remember { mutableStateOf(false) }
     var showAddFriendDialog by remember { mutableStateOf(false) }
-    var friendId by remember { mutableStateOf("") }
+    var searchQuery by remember { mutableStateOf("") }
+    var searchResults by remember { mutableStateOf<List<UserResponse>>(emptyList()) }
 
     LaunchedEffect(Unit) {
         scope.launch {
@@ -146,24 +149,45 @@ fun FriendsScreen(accessToken: String) {
             title = { Text("Добавить друга") },
             text = {
                 Column {
-                    OutlinedTextField(value = friendId, onValueChange = { friendId = it }, label = { Text("ID пользователя") })
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        label = { Text("Имя пользователя") }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(onClick = {
+                        scope.launch {
+                            try {
+                                searchResults = RetrofitClient.apiService.searchUsers(searchQuery)
+                            } catch (e: Exception) {
+                                Log.e("API_ERROR", "Ошибка поиска пользователей", e)
+                            }
+                        }
+                    }) {
+                        Text("Искать")
+                    }
+                    LazyColumn {
+                        items(searchResults) { user ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(user.username)
+                                IconButton(onClick = {
+                                    scope.launch {
+                                        RetrofitClient.apiService.sendFriendRequest(user.id, "Bearer $accessToken")
+                                    }
+                                }) {
+                                    Icon(Icons.Default.PersonAdd, contentDescription = "Добавить друга")
+                                }
+                            }
+                        }
+                    }
                 }
             },
             confirmButton = {
-                Button(onClick = {
-                    scope.launch {
-                        if (friendId.isNotEmpty()) {
-                            RetrofitClient.apiService.sendFriendRequest(friendId.toInt(), "Bearer $accessToken")
-                            showAddFriendDialog = false
-                        }
-                    }
-                }) {
-                    Text("Отправить")
-                }
-            },
-            dismissButton = {
                 Button(onClick = { showAddFriendDialog = false }) {
-                    Text("Отмена")
+                    Text("Закрыть")
                 }
             }
         )

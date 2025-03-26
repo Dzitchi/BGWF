@@ -74,6 +74,8 @@ dependencies {
 
     implementation ("com.google.accompanist:accompanist-flowlayout:0.32.0")
 
+    implementation("androidx.compose.material:material-icons-extended:1.5.0")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

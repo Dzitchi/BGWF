@@ -64,4 +64,7 @@ interface ApiService {
 
     @GET("/friends/requests")
     suspend fun getFriendRequests(@Header("Authorization") token: String): Response<List<FriendRequestResponse>>
+
+    @GET("/users/search")
+    suspend fun searchUsers(@Query("query") query: String): List<UserResponse>
 }
