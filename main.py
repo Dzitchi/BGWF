@@ -480,3 +480,27 @@ def get_incoming_friend_requests(authorization: str = Header(...), db: Session =
         {"id": request.FriendRequest.id, "sender_id": request.FriendRequest.sender_id, "sender_name": request.username}
         for request in requests
     ]
+
+
+@app.get("/users/search")
+def search_users(query: str = "", db: Session = Depends(get_db)):
+    """Поиск пользователей по имени с учетом транслитерации."""
+
+    users = db.query(User).all()
+    if not query:
+        return users  # Если запрос пустой, возвращаем всех пользователей
+
+    translit_query = safe_translit(query)
+    results = []
+
+    for user in users:
+        similarity = max(
+            fuzz.ratio(query.lower(), user.username.lower()),
+            fuzz.ratio(translit_query.lower(), user.username.lower())
+        )
+        if similarity > 40:  # Если схожесть больше 40%, добавляем в результат
+            results.append((user, similarity))
+
+    results.sort(key=lambda x: x[1], reverse=True)
+
+    return [{"id": user.id, "username": user.username, "email": user.email} for user, _ in results]

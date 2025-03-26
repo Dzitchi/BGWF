@@ -6,7 +6,7 @@
 
 Для работы нужно установить следующие библиотеки
 
-pip install fastapi uvicorn sqlalchemy sqlite rapidfuzz transliterate passlib jwt
+pip install fastapi uvicorn sqlalchemy sqlite rapidfuzz transliterate passlib pyjwt
 
 запустить с помощью  uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
