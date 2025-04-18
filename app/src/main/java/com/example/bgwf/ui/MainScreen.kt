@@ -8,19 +8,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 
 import com.example.bgwf.api.RetrofitClient
-import com.example.bgwf.api.WebSocketManager
 import com.example.bgwf.model.UserResponse
 import com.example.bgwf.model.Game
 import com.example.bgwf.utils.SharedPreferencesHelper
-import org.json.JSONObject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(sharedPreferencesHelper: SharedPreferencesHelper) {
+fun MainScreen(
+    sharedPreferencesHelper: SharedPreferencesHelper,
+    snackbarHostState: SnackbarHostState
+) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
@@ -28,10 +27,7 @@ fun MainScreen(sharedPreferencesHelper: SharedPreferencesHelper) {
     var selectedGame by remember { mutableStateOf<Game?>(null) }
     var isLoggedIn by remember { mutableStateOf(false) }
     var accessToken by remember { mutableStateOf(sharedPreferencesHelper.getToken() ?: "") }
-    var userInfo by remember { mutableStateOf<UserResponse?>(null) } // Данные о пользователе
-
-    val token = sharedPreferencesHelper.getToken().orEmpty()
-    val userId = userInfo?.id ?: -1
+    var userInfo by remember { mutableStateOf<UserResponse?>(null) }
 
     // Загружаем данные пользователя при изменении токена
     LaunchedEffect(accessToken) {
@@ -44,45 +40,13 @@ fun MainScreen(sharedPreferencesHelper: SharedPreferencesHelper) {
                 isLoggedIn = false
                 accessToken = ""
                 sharedPreferencesHelper.clearToken()
+                scope.launch {
+                    snackbarHostState.showSnackbar("Ошибка авторизации")
+                }
             }
         } else {
             isLoggedIn = false
             userInfo = null
-        }
-    }
-
-    // 1) создаём SnackbarHost для уведомлений
-    val snackbarHostState = remember { SnackbarHostState() }
-    // 2) инстанцируем WebSocketManager
-    val wsManager = remember(userId, token) {
-        WebSocketManager(userId, token, object : WebSocketManager.Listener {
-            override fun onEvent(type: String, payload: JSONObject) {
-                // вынесем на главный поток
-                CoroutineScope(Dispatchers.Main).launch {
-                    when(type) {
-                        "friend_request_received" -> {
-                            snackbarHostState.showSnackbar("Новая заявка в друзья")
-                            // можно обновить локальный стэйт friendRequestsCount
-                        }
-                        "friend_request_response" -> {
-                            val resp = payload.getString("response")
-                            snackbarHostState.showSnackbar(
-                                if (resp=="accepted") "Ваша заявка принята"
-                                else "Ваша заявка отклонена"
-                            )
-                        }
-                    }
-                }
-            }
-        })
-    }
-
-    // автоматически подключаемся при наличии токена и userId
-    LaunchedEffect(userId, token) {
-        if (token.isNotEmpty() && userId > 0) {
-            wsManager.connect()
-        } else {
-            wsManager.disconnect()
         }
     }
 
@@ -118,6 +82,7 @@ fun MainScreen(sharedPreferencesHelper: SharedPreferencesHelper) {
         drawerState = drawerState
     ) {
         Scaffold(
+            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
             topBar = {
                 TopAppBar(
                     title = { Text("BGWF") },

@@ -17,10 +17,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PersonAdd
 import kotlinx.coroutines.launch
-import org.json.JSONObject
 
 import com.example.bgwf.api.RetrofitClient
-import com.example.bgwf.api.WebSocketManager
 import com.example.bgwf.model.FriendResponse
 import com.example.bgwf.model.FriendRequestResponse
 import com.example.bgwf.model.UserResponse
@@ -45,8 +43,12 @@ fun FriendsScreen(accessToken: String) {
             if (response.isSuccessful) friends = response.body() ?: emptyList()
         } catch (e: Exception) {
             Log.e("API_ERROR", "Ошибка получения друзей", e)
+            scope.launch {
+                snackbarHostState.showSnackbar("Ошибка загрузки друзей")
+            }
         }
     }
+
     // Utility: load incoming requests
     suspend fun loadFriendRequests() {
         try {
@@ -54,6 +56,9 @@ fun FriendsScreen(accessToken: String) {
             if (response.isSuccessful) friendRequests = response.body() ?: emptyList()
         } catch (e: Exception) {
             Log.e("API_ERROR", "Ошибка получения заявок", e)
+            scope.launch {
+                snackbarHostState.showSnackbar("Ошибка загрузки заявок")
+            }
         }
     }
 
@@ -63,41 +68,14 @@ fun FriendsScreen(accessToken: String) {
             try {
                 val user = RetrofitClient.apiService.getUser("Bearer $accessToken")
                 userId = user.id
+                loadFriends()
+                loadFriendRequests()
             } catch (e: Exception) {
                 Log.e("API_ERROR", "Ошибка получения пользователя", e)
-            }
-            loadFriends()
-            loadFriendRequests()
-        }
-    }
-
-    // Setup WebSocket for real-time notifications
-    val wsManager = remember(userId, accessToken) {
-        userId?.let {
-            WebSocketManager(it, accessToken, object : WebSocketManager.Listener {
-                override fun onEvent(type: String, payload: JSONObject) {
-                    scope.launch {
-                        when (type) {
-                            "friend_request_received" -> {
-                                loadFriendRequests()
-                                snackbarHostState.showSnackbar("Новая заявка в друзья")
-                            }
-                            "friend_request_response" -> {
-                                loadFriends()
-                                val resp = payload.getString("response")
-                                val msg = if (resp == "accepted") "Ваша заявка принята" else "Ваша заявка отклонена"
-                                snackbarHostState.showSnackbar(msg)
-                            }
-                        }
-                    }
+                scope.launch {
+                    snackbarHostState.showSnackbar("Ошибка загрузки пользователя")
                 }
-            })
-        }
-    }
-    DisposableEffect(wsManager) {
-        wsManager?.connect()
-        onDispose {
-            wsManager?.disconnect()
+            }
         }
     }
 
@@ -158,18 +136,27 @@ fun FriendsScreen(accessToken: String) {
                                 Row {
                                     IconButton(onClick = {
                                         scope.launch {
-                                            RetrofitClient.apiService.respondToFriendRequest(req.id, "accepted", "Bearer $accessToken")
-                                            loadFriendRequests()
-                                            showRequestsDialog = false
+                                            try {
+                                                RetrofitClient.apiService.respondToFriendRequest(req.id, "accepted", "Bearer $accessToken")
+                                                loadFriendRequests()
+                                                loadFriends()
+                                                showRequestsDialog = false
+                                            } catch (e: Exception) {
+                                                snackbarHostState.showSnackbar("Ошибка принятия заявки")
+                                            }
                                         }
                                     }) {
                                         Icon(Icons.Default.Check, contentDescription = "Принять")
                                     }
                                     IconButton(onClick = {
                                         scope.launch {
-                                            RetrofitClient.apiService.respondToFriendRequest(req.id, "rejected", "Bearer $accessToken")
-                                            loadFriendRequests()
-                                            showRequestsDialog = false
+                                            try {
+                                                RetrofitClient.apiService.respondToFriendRequest(req.id, "rejected", "Bearer $accessToken")
+                                                loadFriendRequests()
+                                                showRequestsDialog = false
+                                            } catch (e: Exception) {
+                                                snackbarHostState.showSnackbar("Ошибка отклонения заявки")
+                                            }
                                         }
                                     }) {
                                         Icon(Icons.Default.Close, contentDescription = "Отклонить")
@@ -200,6 +187,7 @@ fun FriendsScreen(accessToken: String) {
                                 searchResults = RetrofitClient.apiService.searchUsers(searchQuery)
                             } catch (e: Exception) {
                                 Log.e("API_ERROR", "Ошибка поиска пользователей", e)
+                                snackbarHostState.showSnackbar("Ошибка поиска пользователей")
                             }
                         }
                     }) { Text("Искать") }
@@ -209,8 +197,12 @@ fun FriendsScreen(accessToken: String) {
                                 Text(user.username)
                                 IconButton(onClick = {
                                     scope.launch {
-                                        RetrofitClient.apiService.sendFriendRequest(user.id, "Bearer $accessToken")
-                                        loadFriendRequests()
+                                        try {
+                                            RetrofitClient.apiService.sendFriendRequest(user.id, "Bearer $accessToken")
+                                            snackbarHostState.showSnackbar("Заявка отправлена")
+                                        } catch (e: Exception) {
+                                            snackbarHostState.showSnackbar("Ошибка отправки заявки")
+                                        }
                                     }
                                 }) {
                                     Icon(Icons.Default.PersonAdd, contentDescription = "Добавить друга")
