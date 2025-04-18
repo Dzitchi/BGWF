@@ -6,7 +6,10 @@ import androidx.core.content.edit
 
 class SharedPreferencesHelper(context: Context) {
     private val prefs: SharedPreferences =
-        context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+        context.applicationContext.getSharedPreferences(
+            "user_prefs",
+            Context.MODE_PRIVATE
+        )
 
     fun saveToken(token: String) {
         prefs.edit { putString("access_token", token) }

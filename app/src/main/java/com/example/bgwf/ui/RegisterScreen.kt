@@ -16,7 +16,7 @@ import com.example.bgwf.utils.SharedPreferencesHelper
 
 @Composable
 fun RegisterScreen(onRegisterSuccess: (String) -> Unit) {
-    val context = LocalContext.current
+    val context = LocalContext.current.applicationContext
     val prefs = remember { SharedPreferencesHelper(context) } // Добавляем SharedPreferencesHelper
 
     var username by remember { mutableStateOf("") }

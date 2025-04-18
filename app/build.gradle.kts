@@ -76,6 +76,9 @@ dependencies {
 
     implementation("androidx.compose.material:material-icons-extended:1.5.0")
 
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("org.conscrypt:conscrypt-android:2.5.2")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.*
+import com.example.bgwf.api.RetrofitClient
 
 import com.example.bgwf.ui.MainScreen
 import com.example.bgwf.utils.SharedPreferencesHelper
@@ -11,6 +12,7 @@ import com.example.bgwf.utils.SharedPreferencesHelper
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        RetrofitClient.initialize(this)
         setContent {
             val prefs = remember { SharedPreferencesHelper(this) }
 

@@ -15,7 +15,7 @@ import com.example.bgwf.model.LoginCredentials
 
 @Composable
 fun LoginScreen(onLoginSuccess: (String) -> Unit) {
-    val context = LocalContext.current
+    val context = LocalContext.current.applicationContext
     val prefs = remember { SharedPreferencesHelper(context) }
 
     var username by remember { mutableStateOf("") }
