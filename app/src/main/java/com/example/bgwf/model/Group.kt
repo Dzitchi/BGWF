@@ -6,11 +6,6 @@ data class CreateGroupResponse(
     val message: String,
     val group_id: Int)
 
-data class GroupInfo(
-    val id: Int,
-    val creator_id: Int
-)
-
 data class GroupMemberResponse(
     val id: Int,
     val username: String

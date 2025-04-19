@@ -1,7 +1,6 @@
 package com.example.bgwf.api
 
 import android.content.Context
-import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.ConnectionSpec
 import retrofit2.Retrofit

@@ -23,11 +23,11 @@ import com.example.bgwf.model.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GameDetailsScreen(accessToken: String, game: Game, onBack: () -> Unit) {
-    var averageRating by remember { mutableStateOf(0.0) }
+    var averageRating by remember { mutableDoubleStateOf(0.0) }
     val scope = rememberCoroutineScope()
 
     var showRatingDialog by remember { mutableStateOf(false) }
-    var rating by remember { mutableStateOf(0) }
+    var rating by remember { mutableIntStateOf(0) }
     var review by remember { mutableStateOf("") }
     var isGameOwned by remember { mutableStateOf(false) }
 
@@ -58,10 +58,10 @@ fun GameDetailsScreen(accessToken: String, game: Game, onBack: () -> Unit) {
 
     LaunchedEffect(game.id) {
         scope.launch {
-            try {
-                comments = RetrofitClient.apiService.getGameComments(game.id)
+            comments = try {
+                RetrofitClient.apiService.getGameComments(game.id)
             } catch (e: Exception) {
-                comments = emptyList()
+                emptyList()
             }
         }
     }

@@ -98,7 +98,7 @@ fun GroupsScreen(
                                 .clickable { onGroupClick(group.id) }
                                 .padding(vertical = 4.dp)
                         )
-                        Divider()
+                        HorizontalDivider()
                     }
                 }
             }
