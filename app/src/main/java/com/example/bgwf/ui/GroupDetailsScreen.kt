@@ -46,9 +46,10 @@ fun GroupDetailsScreen(
                     .getGroupGames(groupId, "Bearer $accessToken")
 
                 // Проверим, что текущий пользователь — создатель
+                val currentUser = RetrofitClient.apiService.getUser("Bearer $accessToken")
                 val myGroups = RetrofitClient.apiService
                     .getMyGroups("Bearer $accessToken")
-                isCreator = myGroups.any { it.id == groupId && it.creatorId == /* ваше поле */ it.creatorId }
+                isCreator = myGroups.any { it.id == groupId && it.creatorId == currentUser.id }
 
                 // Получим список друзей для приглашения
                 friends = RetrofitClient.apiService.getFriends("Bearer $accessToken").body() ?: emptyList()
@@ -156,4 +157,3 @@ fun GroupDetailsScreen(
         )
     }
 }
-
