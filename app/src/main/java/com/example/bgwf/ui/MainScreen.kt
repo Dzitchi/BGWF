@@ -28,6 +28,7 @@ fun MainScreen(
     var isLoggedIn by remember { mutableStateOf(false) }
     var accessToken by remember { mutableStateOf(sharedPreferencesHelper.getToken() ?: "") }
     var userInfo by remember { mutableStateOf<UserResponse?>(null) }
+    var selectedGroupId by remember { mutableStateOf<Int?>(null) }
 
     // Загружаем данные пользователя при изменении токена
     LaunchedEffect(accessToken) {
@@ -71,6 +72,15 @@ fun MainScreen(
                         selectedGame = null
                         scope.launch { drawerState.close() }
                     })
+                    NavigationDrawerItem(
+                        label = { Text("Группы") },
+                        selected = currentScreen == "Groups",
+                        onClick = {
+                            currentScreen = "Groups"
+                            selectedGame = null
+                            scope.launch { drawerState.close() }
+                        }
+                    )
                 }
                 NavigationDrawerItem(label = { Text("Аккаунт") }, selected = currentScreen == "Account", onClick = {
                     currentScreen = "Account"
@@ -120,6 +130,16 @@ fun MainScreen(
                         currentScreen = "Login"
                     })
                     currentScreen == "MyFriends" -> FriendsScreen(accessToken)
+                    currentScreen == "Groups" -> GroupsScreen(accessToken) { groupId ->
+                        // по клику открываем детали группы
+                        currentScreen = "GroupDetails"
+                        selectedGroupId = groupId
+                    }
+                    currentScreen == "GroupDetails" -> GroupDetailsScreen(
+                        accessToken = accessToken,
+                        groupId = selectedGroupId!!,
+                        onBack = { currentScreen = "Groups" }
+                    )
                 }
             }
         }

@@ -58,6 +58,15 @@ class MainActivity : ComponentActivity() {
                                         val msg = if (resp == "accepted") "Ваша заявка принята" else "Ваша заявка отклонена"
                                         snackbarHostState.showSnackbar(msg)
                                     }
+                                    "group_invitation_received" -> {
+                                        snackbarHostState.showSnackbar("Приглашение в группу от ${payload.getString("username")}")
+                                        // можно обновить локальный список входящих приглашений
+                                    }
+                                    "group_invitation_response" -> {
+                                        val resp = payload.getString("response")
+                                        val msg = if (resp == "accepted") "Ваша заявка в группу принята" else "Ваша заявка отклонена"
+                                        snackbarHostState.showSnackbar(msg)
+                                    }
                                 }
                             }
                         }

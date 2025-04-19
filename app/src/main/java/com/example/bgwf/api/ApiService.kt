@@ -67,4 +67,41 @@ interface ApiService {
 
     @GET("/users/search")
     suspend fun searchUsers(@Query("query") query: String): List<UserResponse>
+
+    @POST("/groups")
+    suspend fun createGroup(@Header("Authorization") token: String): CreateGroupResponse
+
+    @POST("/groups/{group_id}/invite/{receiver_id}")
+    suspend fun inviteToGroup(
+        @Path("group_id") groupId: Int,
+        @Path("receiver_id") receiverId: Int,
+        @Header("Authorization") token: String
+    ): Response<Unit>
+
+    @GET("/groups/invitations")
+    suspend fun getGroupInvitations(@Header("Authorization") token: String): List<GroupInvitationResponse>
+
+    @POST("/groups/invitations/{invitation_id}/respond")
+    suspend fun respondToGroupInvitation(
+        @Path("invitation_id") invitationId: Int,
+        @Query("response") response: String,
+        @Header("Authorization") token: String
+    ): Response<Unit>
+
+    @GET("/groups/{group_id}/members")
+    suspend fun getGroupMembers(
+        @Path("group_id") groupId: Int,
+        @Header("Authorization") token: String
+    ): List<GroupMemberResponse>
+
+    @GET("/groups/{group_id}/games")
+    suspend fun getGroupGames(
+        @Path("group_id") groupId: Int,
+        @Header("Authorization") token: String
+    ): List<GroupGame>
+
+    @GET("/groups/my")
+    suspend fun getMyGroups(
+        @Header("Authorization") token: String
+    ): List<MyGroupResponse>
 }

@@ -46,6 +46,9 @@ class WebSocketManager(
 
             override fun onFailure(ws: WebSocket, t: Throwable, response: Response?) {
                 Log.e("WS", "Failure", t)
+                // Попытка переподключения через 5 секунд
+                Thread.sleep(5000)
+                connect()
             }
 
             override fun onClosed(ws: WebSocket, code: Int, reason: String) {
