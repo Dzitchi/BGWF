@@ -10,5 +10,6 @@ def safe_translit(text):
             return translit(text, reversed=True)
         else:
             return translit(text, "ru")
-    except Exception:
+    except ValueError as e:
+        print(f"Transliteration failed: {e}")
         return text

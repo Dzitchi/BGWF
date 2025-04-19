@@ -34,7 +34,12 @@ def verify_token(token: str):
 
 
 @router.post("/register")
-def register(username: str = Body(...), email: str = Body(...), password: str = Body(...), db: Session = Depends(get_db)):
+def register(
+        username: str = Body(...),
+        email: str = Body(...),
+        password: str = Body(...),
+        db: Session = Depends(get_db)
+):
     if db.query(User).filter(User.username == username).first():
         raise HTTPException(status_code=400, detail="Username already exists")
     user = User(username=username, email=email)
@@ -51,4 +56,10 @@ def login(username: str = Body(...), password: str = Body(...), db: Session = De
     if not user or not user.verify_password(password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = create_access_token({"sub": user.username, "user_id": user.id})
-    return {"access_token": token, "token_type": "bearer", "user_id": user.id, "username": user.username, "email": user.email}
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user_id": user.id,
+        "username": user.username,
+        "email": user.email
+    }

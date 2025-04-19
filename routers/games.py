@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Body, Header
 from database import get_db
 from models import Game, UserGame, Rating, User
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from rapidfuzz import fuzz
 from routers.auth import verify_token
 from utils.utils import safe_translit
@@ -48,8 +48,25 @@ def get_user_games(user_id: int, db: Session = Depends(get_db)):
 
     Принимает ID пользователя и возвращает список игр, добавленных им в коллекцию.
     """
-    games = db.query(Game).join(UserGame).filter(UserGame.user_id == user_id).all()
-    return games
+    games = (
+        db.query(Game)
+        .join(UserGame)
+        .filter(UserGame.user_id == user_id)
+        .options(joinedload(Game.genre))  # Жадно загружаем связанный жанр
+        .all()
+    )
+
+    return [{
+        "id": game.id,
+        "title": game.title,
+        "min_players": game.min_players,
+        "max_players": game.max_players,
+        "play_time": game.play_time,
+        "genre": game.genre.name if game.genre else None,
+        "description": game.description,
+        "image_url": game.image_url,
+        "created_at": game.created_at
+    } for game in games]
 
 
 @router.get("/games/{game_id}/ratings")
