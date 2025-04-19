@@ -2,6 +2,7 @@ from fastapi import APIRouter, Header, Depends, HTTPException
 from database import get_db
 from sqlalchemy.orm import Session
 from rapidfuzz import fuzz
+from datetime import datetime
 from routers.auth import verify_token
 from models import User, UserGame
 from utils.utils import safe_translit
@@ -103,3 +104,24 @@ def search_users(query: str = "", db: Session = Depends(get_db)):
     results.sort(key=lambda x: x[1], reverse=True)
 
     return [{"id": user.id, "username": user.username, "email": user.email} for user, _ in results]
+
+
+@router.post("/users/games/{game_id}/play")
+def mark_game_played(game_id: int, authorization: str = Header(...), db: Session = Depends(get_db)):
+    """
+    Отметить, что пользователь сыграл в игру, обновив время последней игры.
+    """
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid authorization header")
+
+    token = authorization.split(" ")[1]
+    payload = verify_token(token)
+    user_id = payload.get("user_id")
+
+    user_game = db.query(UserGame).filter(UserGame.user_id == user_id, UserGame.game_id == game_id).first()
+    if not user_game:
+        raise HTTPException(status_code=404, detail="Game not found in user's collection")
+
+    user_game.last_played = datetime.utcnow()
+    db.commit()
+    return {"message": "Last played time updated successfully"}

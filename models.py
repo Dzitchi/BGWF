@@ -21,6 +21,12 @@ class User(Base):
         return pwd_context.verify(password, self.password_hash)
 
 
+class Genre(Base):
+    __tablename__ = "genres"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False)
+
+
 class Game(Base):
     __tablename__ = "games"
     id = Column(Integer, primary_key=True, index=True)
@@ -28,16 +34,23 @@ class Game(Base):
     min_players = Column(Integer, nullable=False)
     max_players = Column(Integer, nullable=False)
     play_time = Column(Integer, nullable=True)
-    genre = Column(String, nullable=True)
+    genre_id = Column(Integer, ForeignKey("genres.id"), nullable=True)
     description = Column(Text, nullable=True)
     image_url = Column(String, nullable=True)
     created_at = Column(DateTime, default=func.now())
+
+    genre = relationship("Genre", back_populates="games")
+
+
+# Добавляем обратную связь в модель Genre
+Genre.games = relationship("Game", back_populates="genre")
 
 
 class UserGame(Base):
     __tablename__ = "user_games"
     user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
     game_id = Column(Integer, ForeignKey("games.id"), primary_key=True)
+    last_played = Column(DateTime, nullable=True)
 
 
 class Rating(Base):
@@ -58,3 +71,31 @@ class FriendRequest(Base):
 
     sender = relationship("User", foreign_keys=[sender_id])
     receiver = relationship("User", foreign_keys=[receiver_id])
+
+
+class Group(Base):
+    __tablename__ = "groups"
+    id = Column(Integer, primary_key=True, index=True)
+    creator_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime, default=func.now())
+
+    creator = relationship("User")
+
+
+class GroupMember(Base):
+    __tablename__ = "group_members"
+    group_id = Column(Integer, ForeignKey("groups.id"), primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+
+
+class GroupInvitation(Base):
+    __tablename__ = "group_invitations"
+    id = Column(Integer, primary_key=True, index=True)
+    group_id = Column(Integer, ForeignKey("groups.id"), nullable=False)
+    sender_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    receiver_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    status = Column(Enum("pending", "accepted", "rejected", name="invitation_status"), default="pending")
+
+    sender = relationship("User", foreign_keys=[sender_id])
+    receiver = relationship("User", foreign_keys=[receiver_id])
+    group = relationship("Group")

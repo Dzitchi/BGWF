@@ -15,7 +15,10 @@ def search_games(query: str = "", db: Session = Depends(get_db)):
     games = db.query(Game).all()
 
     if not query:
-        return games  # Если запрос пустой, возвращаем все игры
+        return [{
+            **game.__dict__,
+            "genre": game.genre.name if game.genre else None
+        } for game in games]
 
     # Транслитерация для поиска и список с совпадениями
     translit_query = safe_translit(query)
@@ -32,7 +35,10 @@ def search_games(query: str = "", db: Session = Depends(get_db)):
     # Сортируем по степени совпадения
     results.sort(key=lambda x: x[1], reverse=True)
 
-    return [game for game, _ in results]
+    return [{
+        **game.__dict__,
+        "genre": game.genre.name if game.genre else None
+    } for game, _ in results]
 
 
 @router.get("/users/{user_id}/games")
