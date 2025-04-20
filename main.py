@@ -49,7 +49,7 @@ def delete_old_groups():
     logger.info("Starting the process of deleting obsolete groups.")
     db = SessionLocal()
     try:
-        cutoff_time = datetime.utcnow() - timedelta(minutes=10)
+        cutoff_time = datetime.utcnow() - timedelta(hours=10)
         old_groups = db.query(Group).filter(Group.created_at < cutoff_time).all()
         for group in old_groups:
             try:
@@ -75,7 +75,7 @@ def delete_old_groups():
 scheduler = BackgroundScheduler()
 scheduler.add_job(
     func=delete_old_groups,
-    trigger=IntervalTrigger(minutes=5),  # Проверяем каждые 10 минут
+    trigger=IntervalTrigger(minutes=60),  # Проверяем каждые 10 минут
     id='delete_old_groups',
     name='Delete groups older than 24 hours',
     replace_existing=True

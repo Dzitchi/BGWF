@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Header, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
-from models import Group, GroupMember, GroupInvitation, User, Game, UserGame
+from models import Group, GroupMember, GroupInvitation, User, Game, UserGame, Genre
 from routers.auth import verify_token
 from utils.websocket import active_connections
 
@@ -175,8 +175,17 @@ def get_group_members(group_id: int, authorization: str = Header(...), db: Sessi
 
 
 @router.get("/groups/{group_id}/games")
-def get_group_games(group_id: int, authorization: str = Header(...), db: Session = Depends(get_db)):
-    """Получить уникальный список игр всех участников группы."""
+def get_group_games(
+    group_id: int,
+    genres: str = None,
+    min_players: int = None,
+    max_players: int = None,
+    min_play_time: int = None,
+    max_play_time: int = None,
+    authorization: str = Header(...),
+    db: Session = Depends(get_db)
+):
+    """Получить уникальный список игр всех участников группы с фильтрами."""
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid authorization header")
 
@@ -197,10 +206,25 @@ def get_group_games(group_id: int, authorization: str = Header(...), db: Session
     # Получаем ID всех участников группы
     member_ids = [m.user_id for m in db.query(GroupMember).filter(GroupMember.group_id == group_id).all()]
 
-    # Получаем уникальный список игр участников
-    games = db.query(Game).join(UserGame).filter(UserGame.user_id.in_(member_ids)).distinct().all()
+    games_query = db.query(Game).join(UserGame).filter(UserGame.user_id.in_(member_ids)).distinct().join(Game.genre, isouter=True)
 
-    # Сериализуем игры, включая жанр
+    # Применяем фильтры
+    if genres:
+        genre_list = [g.strip() for g in genres.split(",")]
+        games_query = games_query.filter(Game.genre.has(Genre.name.in_(genre_list)))
+
+    if min_players is not None:
+        games_query = games_query.filter(Game.min_players <= min_players)
+    if max_players is not None:
+        games_query = games_query.filter(Game.max_players >= max_players)
+
+    if min_play_time is not None:
+        games_query = games_query.filter(Game.play_time >= min_play_time)
+    if max_play_time is not None:
+        games_query = games_query.filter(Game.play_time <= max_play_time)
+
+    games = games_query.all()
+
     return [{
         "id": game.id,
         "title": game.title,

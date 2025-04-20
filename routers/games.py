@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Body, Header
 from database import get_db
-from models import Game, UserGame, Rating, User
+from models import Game, UserGame, Rating, User, Genre
 from sqlalchemy.orm import Session, joinedload
 from rapidfuzz import fuzz
 from routers.auth import verify_token
@@ -10,9 +10,36 @@ router = APIRouter()
 
 
 @router.get("/games/search")
-def search_games(query: str = "", db: Session = Depends(get_db)):
-    """Поиск игр по названию с учетом транслитерации."""
-    games = db.query(Game).all()
+def search_games(
+    query: str = "",
+    genres: str = None,
+    min_players: int = None,
+    max_players: int = None,
+    min_play_time: int = None,
+    max_play_time: int = None,
+    db: Session = Depends(get_db)
+):
+    """Поиск игр по названию и фильтрам."""
+    games_query = db.query(Game).join(Game.genre, isouter=True)
+
+    # Фильтр по жанрам
+    if genres:
+        genre_list = [g.strip() for g in genres.split(",")]
+        games_query = games_query.filter(Game.genre.has(Genre.name.in_(genre_list)))
+
+    # Фильтр по количеству игроков
+    if min_players is not None:
+        games_query = games_query.filter(Game.min_players <= min_players)
+    if max_players is not None:
+        games_query = games_query.filter(Game.max_players >= max_players)
+
+    # Фильтр по продолжительности
+    if min_play_time is not None:
+        games_query = games_query.filter(Game.play_time >= min_play_time)
+    if max_play_time is not None:
+        games_query = games_query.filter(Game.play_time <= max_play_time)
+
+    games = games_query.all()
 
     if not query:
         return [{
@@ -26,10 +53,10 @@ def search_games(query: str = "", db: Session = Depends(get_db)):
 
     for game in games:
         similarity = max(
-            fuzz.ratio(query.lower(), game.title.lower()),  # Обычный поиск
-            fuzz.ratio(translit_query.lower(), game.title.lower())  # Сравнение с транслитерированным текстом
+            fuzz.ratio(query.lower(), game.title.lower()),
+            fuzz.ratio(translit_query.lower(), game.title.lower())
         )
-        if similarity > 40:  # Если схожесть больше 40%, добавляем в результат
+        if similarity > 40:
             results.append((game, similarity))
 
     # Сортируем по степени совпадения
@@ -129,3 +156,9 @@ def get_game_comments(game_id: int, db: Session = Depends(get_db)):
         {"user_id": rating.user_id, "username": username, "rating": rating.rating, "review": rating.review}
         for rating, username in comments
     ]
+
+
+@router.get("/genres")
+def get_genres(db: Session = Depends(get_db)):
+    genres = db.query(Genre).all()
+    return [g.name for g in genres]
