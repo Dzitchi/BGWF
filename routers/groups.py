@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Header, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from database import get_db
-from models import Group, GroupMember, GroupInvitation, User, Game, UserGame, Genre
+from models import Group, GroupMember, GroupInvitation, User, Game, UserGame, Genre, PlayedGame, Rating
 from routers.auth import verify_token
 from utils.websocket import active_connections
+from datetime import datetime
 
 router = APIRouter()
 
@@ -32,7 +34,8 @@ async def create_group(authorization: str = Header(...), db: Session = Depends(g
 
 
 @router.post("/groups/{group_id}/invite/{receiver_id}")
-async def invite_to_group(group_id: int, receiver_id: int, authorization: str = Header(...), db: Session = Depends(get_db)):
+async def invite_to_group(group_id: int, receiver_id: int, authorization: str = Header(...),
+                          db: Session = Depends(get_db)):
     """Отправить приглашение в группу."""
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid authorization header")
@@ -53,7 +56,8 @@ async def invite_to_group(group_id: int, receiver_id: int, authorization: str = 
         raise HTTPException(status_code=400, detail="Cannot invite yourself")
 
     # Проверяем, не является ли пользователь уже участником
-    existing_member = db.query(GroupMember).filter(GroupMember.group_id == group_id, GroupMember.user_id == receiver_id).first()
+    existing_member = db.query(GroupMember).filter(GroupMember.group_id == group_id,
+                                                   GroupMember.user_id == receiver_id).first()
     if existing_member:
         raise HTTPException(status_code=400, detail="User is already a group member")
 
@@ -83,7 +87,8 @@ async def invite_to_group(group_id: int, receiver_id: int, authorization: str = 
 
 
 @router.post("/groups/invitations/{invitation_id}/respond")
-async def respond_to_invitation(invitation_id: int, response: str, authorization: str = Header(...), db: Session = Depends(get_db)):
+async def respond_to_invitation(invitation_id: int, response: str, authorization: str = Header(...),
+                                db: Session = Depends(get_db)):
     """Ответить на приглашение в группу."""
     if response not in ["accepted", "rejected"]:
         raise HTTPException(status_code=400, detail="Invalid response")
@@ -206,7 +211,8 @@ def get_group_games(
     # Получаем ID всех участников группы
     member_ids = [m.user_id for m in db.query(GroupMember).filter(GroupMember.group_id == group_id).all()]
 
-    games_query = db.query(Game).join(UserGame).filter(UserGame.user_id.in_(member_ids)).distinct().join(Game.genre, isouter=True)
+    games_query = db.query(Game).join(UserGame).filter(UserGame.user_id.in_(member_ids)).distinct().join(Game.genre,
+                                                                                                         isouter=True)
 
     # Применяем фильтры
     if genres:
@@ -225,16 +231,61 @@ def get_group_games(
 
     games = games_query.all()
 
+    # считаем во сколько игр сыграл каждый участник
+    user_played_counts = db.query(User.id, func.count(PlayedGame.game_id)).join(PlayedGame).filter(
+        User.id.in_(member_ids)).group_by(User.id).all()
+    user_played_dict = {user_id: count for user_id, count in user_played_counts}
+
+    game_data = []
+    for game in games:
+        # Оценки от пользователей группы
+        ratings = db.query(Rating).filter(Rating.game_id == game.id, Rating.user_id.in_(member_ids)).all()
+        if ratings:
+            # Вычисляем взвешенную среднюю оценку
+            weighted_sum = sum(r.rating * user_played_dict.get(r.user_id, 0) for r in ratings)
+            total_weight = sum(user_played_dict.get(r.user_id, 0) for r in ratings)
+            weighted_avg = weighted_sum / total_weight if total_weight > 0 else 0
+            # Находим количество низких оценок
+            low_rating_count = sum(1 for r in ratings if r.rating < 3) + sum(1 for r in ratings if r.rating < 2)
+        else:
+            weighted_avg = 5  # Игры без оценок имеют низкий приоритет
+            low_rating_count = 0
+
+        # Время последней игры
+        last_played = db.query(func.max(PlayedGame.last_played)).filter(
+            PlayedGame.game_id == game.id,
+            PlayedGame.user_id.in_(member_ids)
+        ).scalar()
+        if last_played is None:
+            last_played = datetime.min  # Неигранные игры считаем давно не игранными
+
+        game_data.append({
+            "game": game,
+            "weighted_avg": weighted_avg,
+            "last_played": last_played,
+            "low_rating_count": low_rating_count
+        })
+
+        print(game_data)
+        print("-----------------------")
+
+    # Сортируем игры по трём критериям
+    sorted_games = sorted(
+        game_data,
+        key=lambda x: (-x["weighted_avg"], x["last_played"], x["low_rating_count"])
+    )
+
+    # Формируем результат
     return [{
-        "id": game.id,
-        "title": game.title,
-        "min_players": game.min_players,
-        "max_players": game.max_players,
-        "play_time": game.play_time,
-        "genre": game.genre.name if game.genre else None,
-        "description": game.description,
-        "image_url": game.image_url
-    } for game in games]
+        "id": gd["game"].id,
+        "title": gd["game"].title,
+        "min_players": gd["game"].min_players,
+        "max_players": gd["game"].max_players,
+        "play_time": gd["game"].play_time,
+        "genre": gd["game"].genre.name if gd["game"].genre else None,
+        "description": gd["game"].description,
+        "image_url": gd["game"].image_url
+    } for gd in sorted_games]
 
 
 @router.get("/groups/my")
@@ -273,3 +324,43 @@ def get_user_groups(
         "creator_id":  group.creator_id,               # теперь существует
         "username":    group.creator_name
     } for group in groups]
+
+
+@router.post("/groups/{group_id}/play/{game_id}")
+def play_game_for_group(
+    group_id: int,
+    game_id: int,
+    authorization: str = Header(...),
+    db: Session = Depends(get_db)
+):
+    # Проверяем JWT
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid authorization header")
+    token = authorization.split(" ", 1)[1]
+    payload = verify_token(token)
+    user_id = payload.get("user_id")
+
+    # Проверяем, что пользователь в группе
+    is_member = db.query(GroupMember).filter(
+        GroupMember.group_id == group_id,
+        GroupMember.user_id == user_id
+    ).first()
+    if not is_member:
+        raise HTTPException(status_code=403, detail="You are not a member of this group")
+
+    # Берём всех участников
+    member_ids = [m.user_id for m in db.query(GroupMember)
+                  .filter(GroupMember.group_id == group_id).all()]
+
+    # Обновляем или создаём PlayedGame для каждого
+    for uid in member_ids:
+        pg = db.query(PlayedGame).filter(
+            PlayedGame.user_id == uid,
+            PlayedGame.game_id == game_id
+        ).first()
+        if pg:
+            pg.last_played = datetime.utcnow()
+        else:
+            db.add(PlayedGame(user_id=uid, game_id=game_id, last_played=datetime.utcnow()))
+    db.commit()
+    return {"message": "Marked played for all group members"}

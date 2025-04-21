@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from rapidfuzz import fuzz
 from datetime import datetime
 from routers.auth import verify_token
-from models import User, UserGame
+from models import User, UserGame, PlayedGame
 from utils.utils import safe_translit
 
 
@@ -106,11 +106,9 @@ def search_users(query: str = "", db: Session = Depends(get_db)):
     return [{"id": user.id, "username": user.username, "email": user.email} for user, _ in results]
 
 
-@router.post("/users/games/{game_id}/play")
+@router.post("/users/play/{game_id}")
 def mark_game_played(game_id: int, authorization: str = Header(...), db: Session = Depends(get_db)):
-    """
-    Отметить, что пользователь сыграл в игру, обновив время последней игры.
-    """
+    """Отметить, что пользователь сыграл в игру, обновив время последней игры."""
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid authorization header")
 
@@ -118,10 +116,12 @@ def mark_game_played(game_id: int, authorization: str = Header(...), db: Session
     payload = verify_token(token)
     user_id = payload.get("user_id")
 
-    user_game = db.query(UserGame).filter(UserGame.user_id == user_id, UserGame.game_id == game_id).first()
-    if not user_game:
-        raise HTTPException(status_code=404, detail="Game not found in user's collection")
-
-    user_game.last_played = datetime.utcnow()
+    # Проверяем, существует ли уже запись
+    played_game = db.query(PlayedGame).filter(PlayedGame.user_id == user_id, PlayedGame.game_id == game_id).first()
+    if played_game:
+        played_game.last_played = datetime.utcnow()
+    else:
+        played_game = PlayedGame(user_id=user_id, game_id=game_id, last_played=datetime.utcnow())
+        db.add(played_game)
     db.commit()
     return {"message": "Last played time updated successfully"}

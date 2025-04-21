@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, Text, DateTime, func, Enum
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship
 from database import Base
 from passlib.context import CryptContext
@@ -13,6 +14,14 @@ class User(Base):
     email = Column(String, unique=True, nullable=False)
     password_hash = Column(String, nullable=False)
     created_at = Column(DateTime, default=func.now())
+
+    # связь с сыгранными играми
+    played_games = relationship("PlayedGame", back_populates="user")
+
+    @hybrid_property
+    def games_played_count(self):
+        # возвращает число записей в played_games
+        return len(self.played_games)
 
     def set_password(self, password: str):
         self.password_hash = pwd_context.hash(password)
@@ -40,6 +49,7 @@ class Game(Base):
     created_at = Column(DateTime, default=func.now())
 
     genre = relationship("Genre", back_populates="games")
+    played_games = relationship("PlayedGame", back_populates="game")
 
 
 # Добавляем обратную связь в модель Genre
@@ -50,7 +60,6 @@ class UserGame(Base):
     __tablename__ = "user_games"
     user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
     game_id = Column(Integer, ForeignKey("games.id"), primary_key=True)
-    last_played = Column(DateTime, nullable=True)
 
 
 class Rating(Base):
@@ -99,3 +108,13 @@ class GroupInvitation(Base):
     sender = relationship("User", foreign_keys=[sender_id])
     receiver = relationship("User", foreign_keys=[receiver_id])
     group = relationship("Group")
+
+
+class PlayedGame(Base):
+    __tablename__ = "played_games"
+    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    game_id = Column(Integer, ForeignKey("games.id"), primary_key=True)
+    last_played = Column(DateTime, default=func.now())
+
+    user = relationship("User", back_populates="played_games")
+    game = relationship("Game", back_populates="played_games")
