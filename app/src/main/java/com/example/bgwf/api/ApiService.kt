@@ -7,7 +7,14 @@ import com.example.bgwf.model.*
 
 interface ApiService {
     @GET("/games/search")
-    suspend fun searchGames(@Query("query") query: String): List<Game>
+    suspend fun searchGames(
+        @Query("query") query: String,
+        @Query("genres") genres: String? = null,
+        @Query("min_players") minPlayers: Int? = null,
+        @Query("max_players") maxPlayers: Int? = null,
+        @Query("min_play_time") minPlayTime: Int? = null,
+        @Query("max_play_time") maxPlayTime: Int? = null
+    ): List<Game>
 
     @GET("/users/{user_id}/games")
     suspend fun getUserGames(@Path("user_id") userId: Int): List<Game>
@@ -97,11 +104,19 @@ interface ApiService {
     @GET("/groups/{group_id}/games")
     suspend fun getGroupGames(
         @Path("group_id") groupId: Int,
-        @Header("Authorization") token: String
+        @Header("Authorization") token: String,
+        @Query("genres") genres: String? = null,
+        @Query("min_players") minPlayers: Int? = null,
+        @Query("max_players") maxPlayers: Int? = null,
+        @Query("min_play_time") minPlayTime: Int? = null,
+        @Query("max_play_time") maxPlayTime: Int? = null
     ): List<GroupGame>
 
     @GET("/groups/my")
     suspend fun getMyGroups(
         @Header("Authorization") token: String
     ): List<MyGroupResponse>
+
+    @GET("/genres")
+    suspend fun getGenres(): List<String>
 }

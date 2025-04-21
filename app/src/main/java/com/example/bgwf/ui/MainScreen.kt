@@ -10,15 +10,18 @@ import androidx.compose.material.icons.filled.Menu
 import kotlinx.coroutines.launch
 
 import com.example.bgwf.api.RetrofitClient
+import com.example.bgwf.api.WebSocketManager
 import com.example.bgwf.model.UserResponse
 import com.example.bgwf.model.Game
 import com.example.bgwf.utils.SharedPreferencesHelper
+import org.json.JSONObject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
     sharedPreferencesHelper: SharedPreferencesHelper,
-    snackbarHostState: SnackbarHostState
+    snackbarHostState: SnackbarHostState,
+    wsManager: WebSocketManager?
 ) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -48,6 +51,35 @@ fun MainScreen(
         } else {
             isLoggedIn = false
             userInfo = null
+        }
+    }
+
+    DisposableEffect(wsManager) {
+        wsManager?.setListener(object : WebSocketManager.Listener {
+            override fun onEvent(type: String, payload: JSONObject) {
+                scope.launch {
+                    when (type) {
+                        "friend_request_received" -> {
+                            val fromName = payload.optString("username", "пользователя")
+                            snackbarHostState.showSnackbar("Новая заявка в друзья от $fromName")
+                        }
+                        "friend_request_response" -> {
+                            val response = payload.optString("response")
+                            snackbarHostState.showSnackbar("Ваш запрос в друзья был $response")
+                        }
+                        "group_invitation_received" -> {
+                            snackbarHostState.showSnackbar("Вас пригласили в группу")
+                        }
+                        "group_invitation_response" -> {
+                            val response = payload.optString("response")
+                            snackbarHostState.showSnackbar("Ваш ответ на приглашение в группу: $response")
+                        }
+                    }
+                }
+            }
+        })
+        onDispose {
+            wsManager?.setListener(null)
         }
     }
 
@@ -138,7 +170,8 @@ fun MainScreen(
                     currentScreen == "GroupDetails" -> GroupDetailsScreen(
                         accessToken = accessToken,
                         groupId = selectedGroupId!!,
-                        onBack = { currentScreen = "Groups" }
+                        onBack = { currentScreen = "Groups" },
+                        wsManager = wsManager
                     )
                 }
             }

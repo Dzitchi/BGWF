@@ -6,7 +6,6 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.*
 import androidx.compose.material3.SnackbarHostState
 import kotlinx.coroutines.launch
-import org.json.JSONObject
 
 import com.example.bgwf.ui.MainScreen
 import com.example.bgwf.utils.SharedPreferencesHelper
@@ -45,32 +44,7 @@ class MainActivity : ComponentActivity() {
             // Инициализируем WebSocketManager
             val wsManager = remember(userId, accessToken) {
                 userId?.let {
-                    WebSocketManager(it, accessToken, object : WebSocketManager.Listener {
-                        override fun onEvent(type: String, payload: JSONObject) {
-                            scope.launch {
-                                when (type) {
-                                    "friend_request_received" -> {
-                                        snackbarHostState.showSnackbar("Новая заявка в друзья")
-                                        // Можно отправить событие для обновления FriendsScreen
-                                    }
-                                    "friend_request_response" -> {
-                                        val resp = payload.getString("response")
-                                        val msg = if (resp == "accepted") "Ваша заявка принята" else "Ваша заявка отклонена"
-                                        snackbarHostState.showSnackbar(msg)
-                                    }
-                                    "group_invitation_received" -> {
-                                        snackbarHostState.showSnackbar("Приглашение в группу от ${payload.getString("username")}")
-                                        // можно обновить локальный список входящих приглашений
-                                    }
-                                    "group_invitation_response" -> {
-                                        val resp = payload.getString("response")
-                                        val msg = if (resp == "accepted") "Ваша заявка в группу принята" else "Ваша заявка отклонена"
-                                        snackbarHostState.showSnackbar(msg)
-                                    }
-                                }
-                            }
-                        }
-                    })
+                    WebSocketManager(it, accessToken)
                 }
             }
 
@@ -86,7 +60,8 @@ class MainActivity : ComponentActivity() {
 
             MainScreen(
                 sharedPreferencesHelper = prefs,
-                snackbarHostState = snackbarHostState
+                snackbarHostState = snackbarHostState,
+                wsManager = wsManager
             )
         }
     }

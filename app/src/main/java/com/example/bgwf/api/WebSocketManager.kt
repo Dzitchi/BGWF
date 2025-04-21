@@ -2,25 +2,29 @@ package com.example.bgwf.api
 
 import android.util.Log
 import okhttp3.*
+import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
 
 class WebSocketManager(
     private val userId: Int,
-    private val token: String,
-    private val listener: Listener
+    private val token: String
 ) {
+    private var webSocket: WebSocket? = null
+    private var listener: Listener? = null
+
     interface Listener {
-        /** тип = "friend_request_received" или "friend_request_response" */
         fun onEvent(type: String, payload: JSONObject)
     }
 
-    private var webSocket: WebSocket? = null
+    fun setListener(listener: Listener?) {
+        this.listener = listener
+    }
 
     fun connect() {
         val client = OkHttpClient.Builder()
-            .pingInterval(30, TimeUnit.SECONDS) // поддерживаем соединение
+            .pingInterval(30, TimeUnit.SECONDS)
             .build()
 
         val request = Request.Builder()
@@ -38,7 +42,7 @@ class WebSocketManager(
                 try {
                     val json = JSONObject(text)
                     val type = json.getString("type")
-                    listener.onEvent(type, json)
+                    listener?.onEvent(type, json)
                 } catch (t: Throwable) {
                     Log.e("WS", "Parse error", t)
                 }
@@ -60,5 +64,25 @@ class WebSocketManager(
     fun disconnect() {
         webSocket?.close(1000, "Client closed")
         webSocket = null
+    }
+
+    fun sendFiltersUpdate(
+        groupId: Int,
+        genres: List<String>,
+        minPlayers: String,
+        maxPlayers: String,
+        minPlayTime: String,
+        maxPlayTime: String
+    ) {
+        val json = JSONObject().apply {
+            put("type", "group_filters_updated")
+            put("group_id", groupId)
+            put("genres", JSONArray(genres))
+            put("min_players", minPlayers)
+            put("max_players", maxPlayers)
+            put("min_play_time", minPlayTime)
+            put("max_play_time", maxPlayTime)
+        }
+        webSocket?.send(json.toString())
     }
 }
