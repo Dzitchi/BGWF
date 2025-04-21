@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material3.*
@@ -15,7 +14,6 @@ import androidx.compose.ui.res.painterResource
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.material.icons.filled.*
-import androidx.compose.ui.text.input.KeyboardType
 
 import com.example.bgwf.R
 import com.example.bgwf.api.RetrofitClient
@@ -225,20 +223,53 @@ fun GroupDetailsScreen(
             Text("Игры участников:", style = MaterialTheme.typography.titleMedium)
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(games) { gg ->
-                    GameItem(
-                        game = Game(
-                            id = gg.id, title = gg.title, genre = gg.genre ?: "",
-                            image_url = gg.image_url,
-                            min_players = gg.min_players, max_players = gg.max_players,
-                            play_time = gg.play_time, description = gg.description
+                    Column {
+                        GameItem(
+                            game = Game(
+                                id = gg.id,
+                                title = gg.title,
+                                genre = gg.genre ?: "",
+                                image_url = gg.image_url,
+                                min_players = gg.min_players,
+                                max_players = gg.max_players,
+                                play_time = gg.play_time,
+                                description = gg.description
+                            ),
+                            onClick = { selectedGame = Game(
+                                id = gg.id,
+                                title = gg.title,
+                                genre = gg.genre ?: "",
+                                image_url = gg.image_url,
+                                min_players = gg.min_players,
+                                max_players = gg.max_players,
+                                play_time = gg.play_time,
+                                description = gg.description
+                            ) }
                         )
-                    ) {
-                        selectedGame = Game(
-                            id = gg.id, title = gg.title, genre = gg.genre ?: "",
-                            image_url = gg.image_url,
-                            min_players = gg.min_players, max_players = gg.max_players,
-                            play_time = gg.play_time, description = gg.description
-                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    try {
+                                        val response = RetrofitClient.apiService
+                                            .playGameForGroup(
+                                                groupId,
+                                                gg.id,
+                                                "Bearer $accessToken"
+                                            )
+                                        if (response.isSuccessful) {
+                                            snackbarHost.showSnackbar("Отмечено у всех участников")
+                                        } else {
+                                            snackbarHost.showSnackbar("Ошибка: ${response.code()}")
+                                        }
+                                    } catch (e: Exception) {
+                                        snackbarHost.showSnackbar("Сетевая ошибка")
+                                    }
+                                }
+                            },
+                            Modifier.align(Alignment.End)
+                        ) { Text("Играть") }
+                        HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
                     }
                 }
             }

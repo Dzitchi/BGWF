@@ -1,6 +1,7 @@
 package com.example.bgwf.ui
 
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -13,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 import coil.compose.AsyncImage
 
@@ -25,6 +27,7 @@ import com.example.bgwf.model.*
 fun GameDetailsScreen(accessToken: String, game: Game, onBack: () -> Unit) {
     var averageRating by remember { mutableDoubleStateOf(0.0) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     var showRatingDialog by remember { mutableStateOf(false) }
     var rating by remember { mutableIntStateOf(0) }
@@ -156,6 +159,22 @@ fun GameDetailsScreen(accessToken: String, game: Game, onBack: () -> Unit) {
                     ) {
                         Text("Добавить игру")
                     }
+                }
+                Button(onClick = {
+                    scope.launch {
+                        try {
+                            val response = RetrofitClient.apiService.markGamePlayed(game.id, "Bearer $accessToken")
+                            if (response.isSuccessful) {
+                                Toast.makeText(context, "Данные обновлены!", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, "Ошибка при обновлении", Toast.LENGTH_SHORT).show()
+                            }
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Ошибка сети", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }) {
+                    Text("Я играл сегодня")
                 }
             } else {
                 Text(

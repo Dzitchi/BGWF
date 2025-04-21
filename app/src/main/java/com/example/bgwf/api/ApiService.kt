@@ -119,4 +119,17 @@ interface ApiService {
 
     @GET("/genres")
     suspend fun getGenres(): List<String>
+
+    @POST("users/play/{game_id}")
+    suspend fun markGamePlayed(
+        @Path("game_id") gameId: Int,
+        @Header("Authorization") token: String
+    ): Response<Unit>
+
+    @POST("groups/{group_id}/play/{game_id}")
+    suspend fun playGameForGroup(
+        @Path("group_id") groupId: Int,
+        @Path("game_id") gameId: Int,
+        @Header("Authorization") token: String
+    ): Response<Unit>
 }
