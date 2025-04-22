@@ -1,3 +1,4 @@
+from functools import lru_cache
 from fastapi import APIRouter, Depends, HTTPException, Body, Header
 from database import get_db
 from models import Game, UserGame, Rating, User, Genre
@@ -29,9 +30,9 @@ def search_games(
 
     # Фильтр по количеству игроков
     if min_players is not None:
-        games_query = games_query.filter(Game.min_players <= min_players)
+        games_query = games_query.filter(Game.max_players >= min_players)
     if max_players is not None:
-        games_query = games_query.filter(Game.max_players >= max_players)
+        games_query = games_query.filter(Game.min_players <= max_players)
 
     # Фильтр по продолжительности
     if min_play_time is not None:
@@ -159,6 +160,7 @@ def get_game_comments(game_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/genres")
+@lru_cache()
 def get_genres(db: Session = Depends(get_db)):
     genres = db.query(Genre).all()
     return [g.name for g in genres]
