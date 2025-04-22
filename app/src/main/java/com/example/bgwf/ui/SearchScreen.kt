@@ -28,6 +28,9 @@ fun SearchScreen(onGameClick: (Game) -> Unit) {
     var selectedGenres by remember { mutableStateOf<List<String>>(emptyList()) }
     var playersRange by remember { mutableStateOf(1f..4f) }
     var playTimeRange by remember { mutableStateOf(0f..120f) }
+    var appliedGenres by remember { mutableStateOf<List<String>>(emptyList()) }
+    var appliedPlayersRange by remember { mutableStateOf(1f..4f) }
+    var appliedPlayTimeRange by remember { mutableStateOf(0f..120f) }
     var showFilters by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
@@ -58,7 +61,14 @@ fun SearchScreen(onGameClick: (Game) -> Unit) {
                 searchQuery = query
                 scope.launch {
                     try {
-                        searchResults = if (query.isEmpty()) allGames else RetrofitClient.apiService.searchGames(query)
+                        searchResults = RetrofitClient.apiService.searchGames(
+                            query,
+                            appliedGenres.joinToString(","),
+                            appliedPlayersRange.start.toInt(),
+                            appliedPlayersRange.endInclusive.toInt(),
+                            appliedPlayTimeRange.start.toInt(),
+                            appliedPlayTimeRange.endInclusive.toInt()
+                        )
                     } catch (e: Exception) {
                         errorMessage = e.message ?: "Ошибка поиска"
                     }
@@ -111,15 +121,18 @@ fun SearchScreen(onGameClick: (Game) -> Unit) {
                 )
                 Button(
                     onClick = {
+                        appliedGenres = selectedGenres
+                        appliedPlayersRange = playersRange
+                        appliedPlayTimeRange = playTimeRange
                         scope.launch {
                             try {
                                 searchResults = RetrofitClient.apiService.searchGames(
                                     searchQuery,
-                                    selectedGenres.joinToString(","),
-                                    playersRange.start.toInt(),
-                                    playersRange.endInclusive.toInt(),
-                                    playTimeRange.start.toInt(),
-                                    playTimeRange.endInclusive.toInt()
+                                    appliedGenres.joinToString(","),
+                                    appliedPlayersRange.start.toInt(),
+                                    appliedPlayersRange.endInclusive.toInt(),
+                                    appliedPlayTimeRange.start.toInt(),
+                                    appliedPlayTimeRange.endInclusive.toInt()
                                 )
                             } catch (e: Exception) {
                                 errorMessage = e.message ?: "Ошибка поиска"
@@ -138,7 +151,7 @@ fun SearchScreen(onGameClick: (Game) -> Unit) {
         }
 
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(if (showFilters) searchResults else allGames) { game ->
+            items(searchResults) { game ->
                 GameItem(game = game, onClick = { onGameClick(game) })
             }
         }
