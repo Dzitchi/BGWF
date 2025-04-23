@@ -1,5 +1,8 @@
 package com.example.bgwf.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class Game(
     val id: Int,
     val title: String,
@@ -9,4 +12,10 @@ data class Game(
     val max_players: Int,
     val play_time: Int,
     val description: String
+)
+
+@Serializable
+data class SearchResponse(
+    val games: List<Game>,
+    val total: Int
 )

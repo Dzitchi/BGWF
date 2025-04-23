@@ -41,7 +41,7 @@ fun GroupDetailsScreen(
     var showFilters by remember { mutableStateOf(false) }
     var selectedGame by remember { mutableStateOf<Game?>(null) }
     var selectedGenres by remember { mutableStateOf<List<String>>(emptyList()) }
-    var playersRange by remember { mutableStateOf(1f..members.size.coerceAtLeast(1).toFloat()) }
+    var desiredPlayers by remember { mutableFloatStateOf(members.size.coerceAtLeast(1).toFloat()) }
     var playTimeRange by remember { mutableStateOf(0f..120f) }
 
     var genres by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -52,13 +52,13 @@ fun GroupDetailsScreen(
         scope.launch {
             try {
                 members = RetrofitClient.apiService.getGroupMembers(groupId, "Bearer $accessToken")
-                playersRange = members.size.toFloat()..members.size.toFloat()
+                desiredPlayers = members.size.toFloat().coerceIn(1f, 10f)
                 games = RetrofitClient.apiService.getGroupGames(
                     groupId,
                     "Bearer $accessToken",
                     selectedGenres.joinToString(","),
-                    playersRange.start.toInt(),
-                    playersRange.endInclusive.toInt(),
+                    desiredPlayers.toInt(),
+                    desiredPlayers.toInt(),
                     playTimeRange.start.toInt(),
                     playTimeRange.endInclusive.toInt()
                 )
@@ -82,7 +82,11 @@ fun GroupDetailsScreen(
                     selectedGenres = payload.getJSONArray("genres").let { array ->
                         List(array.length()) { array.getString(it) }
                     }
-                    playersRange = payload.getDouble("min_players").toFloat()..payload.getDouble("max_players").toFloat()
+                    val minPlayers = payload.getDouble("min_players").toFloat()
+                    val maxPlayers = payload.getDouble("max_players").toFloat()
+                    if (minPlayers == maxPlayers) {
+                        desiredPlayers = minPlayers // Обновляем desiredPlayers
+                    }
                     playTimeRange = payload.getDouble("min_play_time").toFloat()..payload.getDouble("max_play_time").toFloat()
                     scope.launch {
                         try {
@@ -90,8 +94,8 @@ fun GroupDetailsScreen(
                                 groupId,
                                 "Bearer $accessToken",
                                 selectedGenres.joinToString(","),
-                                playersRange.start.toInt(),
-                                playersRange.endInclusive.toInt(),
+                                desiredPlayers.toInt(),
+                                desiredPlayers.toInt(),
                                 playTimeRange.start.toInt(),
                                 playTimeRange.endInclusive.toInt()
                             )
@@ -169,12 +173,12 @@ fun GroupDetailsScreen(
                     }
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    Text("Игроки: от ${playersRange.start.toInt()} до ${playersRange.endInclusive.toInt()}", style = MaterialTheme.typography.bodyMedium)
-                    RangeSlider(
-                        value = playersRange,
-                        onValueChange = { playersRange = it },
+                    Text("Игроки: ${desiredPlayers.toInt()}", style = MaterialTheme.typography.bodyMedium)
+                    Slider(
+                        value = desiredPlayers,
+                        onValueChange = { desiredPlayers = it },
                         valueRange = 1f..10f,
-                        steps = 8,
+                        steps = 9, // Значения от 1 до 10
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -196,16 +200,16 @@ fun GroupDetailsScreen(
                                     groupId,
                                     "Bearer $accessToken",
                                     selectedGenres.joinToString(","),
-                                    playersRange.start.toInt(),
-                                    playersRange.endInclusive.toInt(),
+                                    desiredPlayers.toInt(),
+                                    desiredPlayers.toInt(),
                                     playTimeRange.start.toInt(),
                                     playTimeRange.endInclusive.toInt()
                                 )
                                 wsManager?.sendFiltersUpdate(
                                     groupId,
                                     selectedGenres,
-                                    playersRange.start.toString(),
-                                    playersRange.endInclusive.toString(),
+                                    desiredPlayers.toString(),
+                                    desiredPlayers.toString(),
                                     playTimeRange.start.toString(),
                                     playTimeRange.endInclusive.toString()
                                 )

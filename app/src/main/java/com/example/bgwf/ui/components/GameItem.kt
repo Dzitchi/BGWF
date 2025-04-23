@@ -66,11 +66,20 @@ fun GameItem(game: Game, onClick: () -> Unit) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    verticalAlignment = Alignment.CenterVertically
                 ){
-                    Text(game.title, style = MaterialTheme.typography.bodyLarge)
-
-                    Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = game.title,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f), // Ограничиваем ширину текста
+                        maxLines = 1, // Ограничиваем количество строк
+                        overflow = TextOverflow.Ellipsis // Обрезаем длинный текст
+                    )
+                    Spacer(modifier = Modifier.width(8.dp)) // Отступ перед рейтингом
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.size(40.dp) // Фиксированный размер блока с рейтингом
+                    ) {
                         Icon(
                             painter = painterResource(R.drawable.ic_star), // Иконка звезды
                             contentDescription = "Рейтинг",

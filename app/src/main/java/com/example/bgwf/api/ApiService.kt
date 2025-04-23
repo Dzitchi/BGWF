@@ -9,12 +9,14 @@ interface ApiService {
     @GET("/games/search")
     suspend fun searchGames(
         @Query("query") query: String,
-        @Query("genres") genres: String? = null,
-        @Query("min_players") minPlayers: Int? = null,
-        @Query("max_players") maxPlayers: Int? = null,
-        @Query("min_play_time") minPlayTime: Int? = null,
-        @Query("max_play_time") maxPlayTime: Int? = null
-    ): List<Game>
+        @Query("genres") genres: String,
+        @Query("min_players") minPlayers: Int,
+        @Query("max_players") maxPlayers: Int,
+        @Query("min_play_time") minPlayTime: Int,
+        @Query("max_play_time") maxPlayTime: Int,
+        @Query("offset") offset: Int = 0,
+        @Query("limit") limit: Int = 20
+    ): SearchResponse
 
     @GET("/users/{user_id}/games")
     suspend fun getUserGames(@Path("user_id") userId: Int): List<Game>
@@ -120,13 +122,13 @@ interface ApiService {
     @GET("/genres")
     suspend fun getGenres(): List<String>
 
-    @POST("users/play/{game_id}")
+    @POST("/users/play/{game_id}")
     suspend fun markGamePlayed(
         @Path("game_id") gameId: Int,
         @Header("Authorization") token: String
     ): Response<Unit>
 
-    @POST("groups/{group_id}/play/{game_id}")
+    @POST("/groups/{group_id}/play/{game_id}")
     suspend fun playGameForGroup(
         @Path("group_id") groupId: Int,
         @Path("game_id") gameId: Int,

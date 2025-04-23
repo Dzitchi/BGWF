@@ -11,71 +11,106 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import com.example.bgwf.ui.components.GameItem
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.material.icons.filled.FilterList
+import kotlinx.coroutines.delay
 
 import com.example.bgwf.api.RetrofitClient
 import com.example.bgwf.model.Game
 
+// Параметры поиска и фильтров
+private data class SearchParams(
+    val query: String = "",
+    val genres: List<String> = emptyList(),
+    val minPlayers: Int = 1,
+    val maxPlayers: Int = 10,
+    val minTime: Int = 0,
+    val maxTime: Int = 300
+)
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SearchScreen(onGameClick: (Game) -> Unit) {
-    var searchQuery by remember { mutableStateOf("") }
-    var searchResults by remember { mutableStateOf<List<Game>>(emptyList()) }
-    var allGames by remember { mutableStateOf<List<Game>>(emptyList()) }
+    val searchText by remember { mutableStateOf("") }
+    var params by remember { mutableStateOf(SearchParams()) }
+    var offset by remember { mutableIntStateOf(0) }
+    var results by remember { mutableStateOf<List<Game>>(emptyList()) }
+    var total by remember { mutableIntStateOf(0) }
+    var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
-    var selectedGenres by remember { mutableStateOf<List<String>>(emptyList()) }
-    var playersRange by remember { mutableStateOf(1f..4f) }
-    var playTimeRange by remember { mutableStateOf(0f..120f) }
-    var appliedGenres by remember { mutableStateOf<List<String>>(emptyList()) }
-    var appliedPlayersRange by remember { mutableStateOf(1f..4f) }
-    var appliedPlayTimeRange by remember { mutableStateOf(0f..120f) }
     var showFilters by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-
+    var selectedGenres by remember { mutableStateOf<List<String>>(emptyList()) }
+    var playersRange by remember { mutableStateOf(1f..10f) }
+    var playTimeRange by remember { mutableStateOf(0f..300f) }
     var genres by remember { mutableStateOf<List<String>>(emptyList()) }
+
+    // Однократная загрузка доступных жанров
     LaunchedEffect(Unit) {
-        genres = RetrofitClient.apiService.getGenres()
-        allGames = try {
-            RetrofitClient.apiService.searchGames("")
+        genres = try {
+            RetrofitClient.apiService.getGenres()
         } catch (e: Exception) {
-            errorMessage = e.message ?: "Ошибка загрузки игр"
             emptyList()
         }
-        searchResults = allGames
+    }
+
+    // Debounce для текстового поиска
+    LaunchedEffect(searchText) {
+        delay(500) // ждать 500 мс после последнего ввода
+        if (params.query != searchText) {
+            params = params.copy(query = searchText)
+            offset = 0
+        }
+    }
+
+    LaunchedEffect(params, offset) {
+        isLoading = true
+        errorMessage = ""
+        try {
+            val response = RetrofitClient.apiService.searchGames(
+                query = params.query,
+                genres = params.genres.joinToString(","),
+                minPlayers = params.minPlayers,
+                maxPlayers = params.maxPlayers,
+                minPlayTime = params.minTime,
+                maxPlayTime = params.maxTime,
+                offset = offset,
+                limit = 20
+            )
+            results = if (offset == 0) {
+                response.games
+            } else {
+                results + response.games
+            }
+            total = response.total
+        } catch (e: Exception) {
+            errorMessage = e.message ?: "Ошибка поиска"
+        } finally {
+            isLoading = false
+        }
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Поиск игр", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
+            Text(
+                text = "Поиск игр",
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.weight(1f)
+            )
             IconButton(onClick = { showFilters = !showFilters }) {
                 Icon(Icons.Default.FilterList, contentDescription = "Фильтры")
             }
         }
-        // Поле поиска
+
         OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { query ->
-                searchQuery = query
-                scope.launch {
-                    try {
-                        searchResults = RetrofitClient.apiService.searchGames(
-                            query,
-                            appliedGenres.joinToString(","),
-                            appliedPlayersRange.start.toInt(),
-                            appliedPlayersRange.endInclusive.toInt(),
-                            appliedPlayTimeRange.start.toInt(),
-                            appliedPlayTimeRange.endInclusive.toInt()
-                        )
-                    } catch (e: Exception) {
-                        errorMessage = e.message ?: "Ошибка поиска"
-                    }
-                }
+            value = params.query,
+            onValueChange = { newQ ->
+                params = params.copy(query = newQ)
+                offset = 0
             },
             label = { Text("Поиск игры") },
-            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp)
         )
 
         if (showFilters) {
@@ -92,15 +127,22 @@ fun SearchScreen(onGameClick: (Game) -> Unit) {
                         FilterChip(
                             selected = genre in selectedGenres,
                             onClick = {
-                                selectedGenres = if (genre in selectedGenres) selectedGenres - genre else selectedGenres + genre
+                                val newList = if (genre in selectedGenres) selectedGenres - genre else selectedGenres + genre
+                                selectedGenres = newList
+                                params = params.copy(genres = newList)
+                                offset = 0
                             },
                             label = { Text(genre) },
                             modifier = Modifier.padding(4.dp)
                         )
                     }
                 }
+
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Игроки: от ${playersRange.start.toInt()} до ${playersRange.endInclusive.toInt()}", style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    text = "Игроки: от ${playersRange.start.toInt()} до ${playersRange.endInclusive.toInt()}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
                 RangeSlider(
                     value = playersRange,
                     onValueChange = { playersRange = it },
@@ -109,9 +151,11 @@ fun SearchScreen(onGameClick: (Game) -> Unit) {
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text("Время игры (мин): от ${playTimeRange.start.toInt()} до ${playTimeRange.endInclusive.toInt()}", style = MaterialTheme.typography.bodyMedium)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Время игры (мин): от ${playTimeRange.start.toInt()} до ${playTimeRange.endInclusive.toInt()}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
                 RangeSlider(
                     value = playTimeRange,
                     onValueChange = { playTimeRange = it },
@@ -119,25 +163,16 @@ fun SearchScreen(onGameClick: (Game) -> Unit) {
                     steps = 29,
                     modifier = Modifier.fillMaxWidth()
                 )
+
                 Button(
                     onClick = {
-                        appliedGenres = selectedGenres
-                        appliedPlayersRange = playersRange
-                        appliedPlayTimeRange = playTimeRange
-                        scope.launch {
-                            try {
-                                searchResults = RetrofitClient.apiService.searchGames(
-                                    searchQuery,
-                                    appliedGenres.joinToString(","),
-                                    appliedPlayersRange.start.toInt(),
-                                    appliedPlayersRange.endInclusive.toInt(),
-                                    appliedPlayTimeRange.start.toInt(),
-                                    appliedPlayTimeRange.endInclusive.toInt()
-                                )
-                            } catch (e: Exception) {
-                                errorMessage = e.message ?: "Ошибка поиска"
-                            }
-                        }
+                        params = params.copy(
+                            minPlayers = playersRange.start.toInt(),
+                            maxPlayers = playersRange.endInclusive.toInt(),
+                            minTime = playTimeRange.start.toInt(),
+                            maxTime = playTimeRange.endInclusive.toInt()
+                        )
+                        offset = 0
                     },
                     modifier = Modifier.align(Alignment.End).padding(vertical = 8.dp)
                 ) {
@@ -147,12 +182,37 @@ fun SearchScreen(onGameClick: (Game) -> Unit) {
         }
 
         if (errorMessage.isNotEmpty()) {
-            Text("Ошибка: $errorMessage", color = MaterialTheme.colorScheme.error)
+            Text(
+                text = "Ошибка: $errorMessage",
+                color = MaterialTheme.colorScheme.error
+            )
         }
 
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(searchResults) { game ->
+            items(results) { game ->
                 GameItem(game = game, onClick = { onGameClick(game) })
+            }
+            if (results.size < total && !isLoading) {
+                item {
+                    Button(
+                        onClick = { offset += 20 },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Text("Загрузить ещё")
+                    }
+                }
+            }
+            if (isLoading) {
+                item {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                            .wrapContentWidth(Alignment.CenterHorizontally)
+                    )
+                }
             }
         }
     }
