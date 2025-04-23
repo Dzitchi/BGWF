@@ -12,15 +12,17 @@ router = APIRouter()
 
 @router.get("/games/search")
 def search_games(
-    query: str = "",
-    genres: str = None,
-    min_players: int = None,
-    max_players: int = None,
-    min_play_time: int = None,
-    max_play_time: int = None,
-    db: Session = Depends(get_db)
+        query: str = "",
+        genres: str = None,
+        min_players: int = None,
+        max_players: int = None,
+        min_play_time: int = None,
+        max_play_time: int = None,
+        offset: int = 0,
+        limit: int = 20,
+        db: Session = Depends(get_db)
 ):
-    """Поиск игр по названию и фильтрам."""
+    """Поиск игр по названию и фильтрам с пагинацией."""
     games_query = db.query(Game).join(Game.genre, isouter=True)
 
     # Фильтр по жанрам
@@ -40,33 +42,42 @@ def search_games(
     if max_play_time is not None:
         games_query = games_query.filter(Game.play_time <= max_play_time)
 
-    games = games_query.all()
+    # Фильтрация по названию, если есть запрос
+    if query:
+        translit_query = safe_translit(query)
+        games = games_query.all()
+        results = []
 
-    if not query:
-        return [{
+        for game in games:
+            similarity = max(
+                fuzz.ratio(query.lower(), game.title.lower()),
+                fuzz.ratio(translit_query.lower(), game.title.lower())
+            )
+            if similarity > 40:
+                results.append((game, similarity))
+
+        # Сортируем по степени совпадения
+        results.sort(key=lambda x: x[1], reverse=True)
+        games = [game for game, _ in results]
+
+        # Подсчёт общего количества игр после фильтрации
+        total_games = len(games)
+
+        # Применение пагинации
+        games = games[offset:offset + limit]
+    else:
+        # Подсчёт общего количества игр
+        total_games = games_query.count()
+        # Применение пагинации
+        games = games_query.offset(offset).limit(limit).all()
+
+    return {
+        "games": [{
             **game.__dict__,
             "genre": game.genre.name if game.genre else None
-        } for game in games]
-
-    # Транслитерация для поиска и список с совпадениями
-    translit_query = safe_translit(query)
-    results = []
-
-    for game in games:
-        similarity = max(
-            fuzz.ratio(query.lower(), game.title.lower()),
-            fuzz.ratio(translit_query.lower(), game.title.lower())
-        )
-        if similarity > 40:
-            results.append((game, similarity))
-
-    # Сортируем по степени совпадения
-    results.sort(key=lambda x: x[1], reverse=True)
-
-    return [{
-        **game.__dict__,
-        "genre": game.genre.name if game.genre else None
-    } for game, _ in results]
+        } for game in games],
+        "total": total_games
+    }
 
 
 @router.get("/users/{user_id}/games")
