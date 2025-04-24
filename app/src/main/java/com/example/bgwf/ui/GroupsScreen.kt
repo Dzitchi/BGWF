@@ -127,22 +127,38 @@ fun GroupsScreen(
                                 Row {
                                     IconButton(onClick = {
                                         scope.launch {
-                                            RetrofitClient.apiService.respondToGroupInvitation(
-                                                inv.id, "accepted", "Bearer $accessToken"
-                                            )
-                                            invitations = invitations.filter { it.id != inv.id }
-                                            snackbarHost.showSnackbar("Принято")
+                                            try {
+                                                // Отправляем запрос на принятие приглашения
+                                                RetrofitClient.apiService.respondToGroupInvitation(
+                                                    inv.id, "accepted", "Bearer $accessToken"
+                                                )
+                                                // Обновляем список групп
+                                                groups = RetrofitClient.apiService.getMyGroups("Bearer $accessToken")
+                                                // Обновляем список приглашений
+                                                invitations = RetrofitClient.apiService.getGroupInvitations("Bearer $accessToken")
+                                                snackbarHost.showSnackbar("Принято")
+                                            } catch (e: Exception) {
+                                                snackbarHost.showSnackbar("Ошибка при принятии приглашения")
+                                            }
                                         }
                                     }) {
                                         Icon(Icons.Default.Check, contentDescription = "Принять")
                                     }
                                     IconButton(onClick = {
                                         scope.launch {
-                                            RetrofitClient.apiService.respondToGroupInvitation(
-                                                inv.id, "rejected", "Bearer $accessToken"
-                                            )
-                                            invitations = invitations.filter { it.id != inv.id }
-                                            snackbarHost.showSnackbar("Отклонено")
+                                            try {
+                                                // Отправляем запрос на отклонение приглашения
+                                                RetrofitClient.apiService.respondToGroupInvitation(
+                                                    inv.id, "rejected", "Bearer $accessToken"
+                                                )
+                                                // Обновляем список групп (на случай, если что-то изменилось)
+                                                groups = RetrofitClient.apiService.getMyGroups("Bearer $accessToken")
+                                                // Обновляем список приглашений
+                                                invitations = RetrofitClient.apiService.getGroupInvitations("Bearer $accessToken")
+                                                snackbarHost.showSnackbar("Отклонено")
+                                            } catch (e: Exception) {
+                                                snackbarHost.showSnackbar("Ошибка при отклонении приглашения")
+                                            }
                                         }
                                     }) {
                                         Icon(Icons.Default.Close, contentDescription = "Отклонить")
