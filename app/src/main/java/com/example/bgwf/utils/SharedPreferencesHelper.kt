@@ -22,4 +22,18 @@ class SharedPreferencesHelper(context: Context) {
     fun clearToken() {
         prefs.edit { remove("access_token") }
     }
+
+    /**
+     * Проверяет, следует ли показывать подсказку при оценке игры (по умолчанию true)
+     */
+    fun shouldShowRatingHint(): Boolean {
+        return prefs.getBoolean("show_rating_hint", true)
+    }
+
+    /**
+     * Устанавливает, показывать ли подсказку при оценке игры в будущем
+     */
+    fun setShowRatingHint(show: Boolean) {
+        prefs.edit { putBoolean("show_rating_hint", show) }
+    }
 }

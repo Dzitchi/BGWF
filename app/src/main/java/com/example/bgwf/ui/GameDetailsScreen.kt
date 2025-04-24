@@ -21,6 +21,7 @@ import coil.compose.AsyncImage
 import com.example.bgwf.R
 import com.example.bgwf.api.RetrofitClient
 import com.example.bgwf.model.*
+import com.example.bgwf.utils.SharedPreferencesHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,7 +29,9 @@ fun GameDetailsScreen(accessToken: String, game: Game, onBack: () -> Unit) {
     var averageRating by remember { mutableDoubleStateOf(0.0) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val prefsHelper = remember { SharedPreferencesHelper(context) }
 
+    var showRatingHint by remember { mutableStateOf(prefsHelper.shouldShowRatingHint()) }
     var showRatingDialog by remember { mutableStateOf(false) }
     var rating by remember { mutableIntStateOf(0) }
     var review by remember { mutableStateOf("") }
@@ -88,7 +91,7 @@ fun GameDetailsScreen(accessToken: String, game: Game, onBack: () -> Unit) {
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(16.dp)
-                .verticalScroll(rememberScrollState()) // Добавил прокрутку
+                .verticalScroll(rememberScrollState())
         ) {
             Box(modifier = Modifier.fillMaxWidth()) {
                 AsyncImage(
@@ -96,7 +99,7 @@ fun GameDetailsScreen(accessToken: String, game: Game, onBack: () -> Unit) {
                     contentDescription = "Обложка игры",
                     modifier = Modifier
                         .fillMaxWidth()
-                        .aspectRatio(1f), // Ограничил изображение квадратом
+                        .aspectRatio(1f),
                     contentScale = ContentScale.Crop,
                     error = painterResource(R.drawable.error_image),
                     fallback = painterResource(R.drawable.fallback_image)
@@ -246,6 +249,7 @@ fun GameDetailsScreen(accessToken: String, game: Game, onBack: () -> Unit) {
                 RatingDialog(
                     rating = rating,
                     review = review,
+                    showHint = showRatingHint,
                     onRatingChange = { rating = it },
                     onReviewChange = { review = it },
                     onDismiss = { showRatingDialog = false },
@@ -253,13 +257,21 @@ fun GameDetailsScreen(accessToken: String, game: Game, onBack: () -> Unit) {
                         // Отправить запрос на сервер для добавления/обновления рейтинга
                         scope.launch {
                             try {
-                                val ratingObj = Rate(rating, review) // Создаем объект Rating
+                                val ratingObj = Rate(rating, review)
                                 RetrofitClient.apiService.rateGame(game.id, ratingObj, "Bearer $accessToken")
                                 showRatingDialog = false
                             } catch (e: Exception) {
                                 Log.e("API_ERROR", "Ошибка при отправке запроса", e)
                             }
                         }
+                        showRatingDialog = false
+                    },
+                    onDontShowAgainChange = {
+                        prefsHelper.setShowRatingHint(!it)
+                        showRatingHint = !it
+                    },
+                    onCloseHint = {
+                        showRatingHint = false
                     }
                 )
             }
@@ -271,29 +283,77 @@ fun GameDetailsScreen(accessToken: String, game: Game, onBack: () -> Unit) {
 fun RatingDialog(
     rating: Int,
     review: String,
+    showHint: Boolean,
     onRatingChange: (Int) -> Unit,
     onReviewChange: (String) -> Unit,
     onDismiss: () -> Unit,
-    onSaveRating: () -> Unit
+    onSaveRating: () -> Unit,
+    onDontShowAgainChange: (Boolean) -> Unit,
+    onCloseHint: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Оцените игру") },
         text = {
             Column {
-                // Оценка
+                // Подсказка (если включена)
+                if (showHint) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF0F0F0))
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                "Рекомендации по выставлению оценки:",
+                                style = MaterialTheme.typography.titleSmall
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "1 — полностью не заинтересован(а) в игре.\n" +
+                                        "2 — готов(а) сыграть только в исключительных случаях.\n" +
+                                        "3 — не возражаю сыграть, но без особого энтузиазма.\n" +
+                                        "4 — игра нравится; готов(а) регулярно уделять ей время.\n" +
+                                        "5 — идеально; с нетерпением готов(а) играть ежедневно.",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                var checked by remember { mutableStateOf(false) }
+                                Checkbox(
+                                    checked = checked,
+                                    onCheckedChange = {
+                                        checked = it
+                                        onDontShowAgainChange(it)
+                                    }
+                                )
+                                Text("Больше не показывать подсказку")
+                                Spacer(Modifier.weight(1f))
+                                TextButton(onClick = onCloseHint) {
+                                    Text("Закрыть")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Звезды для оценки
                 Row {
                     for (i in 1..5) {
                         IconButton(onClick = { onRatingChange(i) }) {
                             Icon(
                                 painter = painterResource(R.drawable.ic_star),
-                                contentDescription = "Звезда",
-                                tint = if (i <= rating) Color.Yellow else Color.Gray
+                                contentDescription = null,
+                                tint = if (i <= rating) Color(0xFFFFEA00) else Color.Gray
                             )
                         }
                     }
                 }
-                // Отзыв
+                // Поле для отзыва
                 TextField(
                     value = review,
                     onValueChange = onReviewChange,
