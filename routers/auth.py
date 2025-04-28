@@ -3,11 +3,15 @@ from database import get_db
 from models import User
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordBearer
+import secrets
+import os
+from dotenv import load_dotenv
 import jwt
 import datetime
 
 router = APIRouter()
-SECRET_KEY = "your_secret_key"
+load_dotenv()
+SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_hex(32))
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 60
 

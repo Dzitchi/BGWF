@@ -1,3 +1,4 @@
+from functools import lru_cache
 from fastapi import APIRouter, Header, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
@@ -101,6 +102,7 @@ async def respond_to_friend_request(request_id: int, response: str, authorizatio
 
 
 @router.get("/friends")
+@lru_cache
 def get_friends(authorization: str = Header(...), db: Session = Depends(get_db)):
     """Получить список друзей"""
     if not authorization.startswith("Bearer "):

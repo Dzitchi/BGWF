@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 def delete_old_groups():
     """
-    Удаляет группы, созданные более 24 часов назад, вместе с участниками и приглашениями.
+    Удаляет группы, созданные более 10 часов назад, вместе с участниками и приглашениями.
     """
     logger.info("Starting the process of deleting obsolete groups.")
     db = SessionLocal()
@@ -75,9 +75,9 @@ def delete_old_groups():
 scheduler = BackgroundScheduler()
 scheduler.add_job(
     func=delete_old_groups,
-    trigger=IntervalTrigger(minutes=60),  # Проверяем каждые 10 минут
+    trigger=IntervalTrigger(minutes=60),
     id='delete_old_groups',
-    name='Delete groups older than 24 hours',
+    name='Delete groups older than 10 hours',
     replace_existing=True
 )
 
