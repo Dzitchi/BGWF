@@ -16,4 +16,3 @@ local.properties
 venv/
 __pycache__/
 *.log
-*.jpg
